@@ -1,1 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+
+/* ─── Design Tokens ─────────────────────────────────────────────── */
+@theme {
+  --color-green-950: #113a2b;
+  --color-green-900: #174a36;
+  --color-green-800: #1c5b41;
+  --color-green-700: #24704e;
+  --color-green-600: #2d8a60;
+  --color-green-100: #e1f2e9;
+  --color-green-50:  #f0f8f4;
+
+  --color-amber-500: #f2b43c;
+  --color-amber-100: #fff1cc;
+
+  --color-blue-600:  #2878c7;
+  --color-blue-100:  #e4f0fb;
+
+  --color-violet-100: #eee8fb;
+
+  --color-ink-950:   #17221d;
+  --color-ink-800:   #283a32;
+  --color-ink-600:   #5c6d65;
+  --color-ink-500:   #76847d;
+
+  --color-line:      #dde5e0;
+  --color-canvas:    #f5f7f5;
+  --color-danger:    #b7433e;
+  --color-surface:   #ffffff;
+
+  --font-sans: "Inter", sans-serif;
+
+  --shadow-card:   0 2px 8px rgba(23, 34, 29, 0.06);
+  --shadow-panel:  0 10px 30px rgba(29, 62, 45, 0.08);
+  --shadow-modal:  0 24px 60px rgba(0, 0, 0, 0.18);
+  --shadow-glass:  0 8px 32px rgba(23, 34, 29, 0.12);
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", sans-serif;
+  color: #17221d;
+  background: #f5f7f5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+}
+
+button {
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+input, select, textarea {
+  font: inherit;
+}
+
+/* ─── Glassmorphism Utilities ────────────────────────────────────── */
+@layer utilities {
+  /* Light glass — for cards on colored backgrounds */
+  .glass {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+  }
+
+  /* Dark glass — for overlays on dark/green backgrounds */
+  .glass-dark {
+    background: rgba(17, 58, 43, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+  }
+
+  /* Soft glass — for cards on light backgrounds */
+  .glass-soft {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.60);
+    box-shadow: 0 8px 32px rgba(23, 34, 29, 0.10);
+  }
+
+  /* Modal backdrop */
+  .glass-backdrop {
+    background: rgba(17, 58, 43, 0.50);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dde5e0;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5c6d65;
+}
