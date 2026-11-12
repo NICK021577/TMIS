@@ -1,36 +1,44 @@
 /**
- * Badge — colored pill for activity/attendance statuses
+ * Badge — status shown as a small coloured dot + quiet text (like the reference UI).
+ * Use variant="pill" for tags/chips that are not statuses.
  */
-
-const statusMap = {
-  // Activity statuses
-  'Upcoming':  'bg-amber-100  text-yellow-800',
-  'Ongoing':   'bg-blue-100   text-blue-600',
-  'Completed': 'bg-green-100  text-green-700',
-  'Draft':     'bg-[#edf0ee]  text-ink-600',
-  'Planned':   'bg-violet-100 text-violet-700',
-
-  // Attendance statuses
-  'Present':              'bg-green-100 text-green-700',
-  'Not Yet Checked In':   'bg-[#edf0ee] text-ink-600',
-  'Pending Sync':         'bg-amber-100 text-yellow-800',
-
-  // Invitation statuses
-  'Active':   'bg-green-100 text-green-700',
-  'Revoked':  'bg-red-100   text-danger',
-  'Used up':  'bg-[#edf0ee] text-ink-500',
-  'Expired':  'bg-[#edf0ee] text-ink-500',
-
-  // Generic
-  'default':  'bg-[#edf0ee] text-ink-600',
+const DOT = {
+  info:  'bg-brand-500',
+  warn:  'bg-amber-400',
+  ok:    'bg-emerald-400',
+  muted: 'bg-ink-400',
+  bad:   'bg-red-400',
+};
+const PILL = {
+  info:  'bg-brand-100/80 text-brand-700',
+  warn:  'bg-amber-100/80 text-amber-800',
+  ok:    'bg-emerald-100/80 text-emerald-800',
+  muted: 'bg-white/70 text-ink-600 ring-1 ring-black/5',
+  bad:   'bg-red-100/80 text-danger',
 };
 
-export function Badge({ value, className = '' }) {
-  const style = statusMap[value] ?? statusMap['default'];
+const STATUS_TONE = {
+  Ongoing: 'info', Upcoming: 'warn', Completed: 'ok', Draft: 'muted', Planned: 'muted',
+  Present: 'ok', 'Not Yet Checked In': 'muted', 'Pending Sync': 'warn',
+  Active: 'ok', Invited: 'info', Pending: 'warn', 'Under review': 'info', 'Needs info': 'warn',
+  Approved: 'ok', Rejected: 'bad', Revoked: 'bad', 'Used up': 'muted', Expired: 'muted', Suspended: 'bad',
+  Assigned: 'ok', Confirmed: 'ok', Partial: 'warn', Submitted: 'ok', Released: 'ok', Eligible: 'info',
+  'Not eligible': 'muted', 'On track': 'ok', 'Within budget': 'ok', 'Over budget': 'bad', 'No budget': 'muted',
+  Done: 'ok', Published: 'ok', Unpublished: 'muted',
+};
+
+export function Badge({ value, tone, variant = 'dot', className = '' }) {
+  const t = tone ?? STATUS_TONE[value] ?? 'muted';
+  if (variant === 'pill') {
+    return (
+      <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none ${PILL[t]} ${className}`}>
+        {value}
+      </span>
+    );
+  }
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold leading-none ${style} ${className}`}
-    >
+    <span className={`inline-flex items-center gap-2 whitespace-nowrap text-xs text-ink-600 ${className}`}>
+      <i className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${DOT[t]}`} />
       {value}
     </span>
   );

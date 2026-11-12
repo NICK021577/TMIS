@@ -1,27 +1,27 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { AppShell } from './AppShell';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { useStore } from '../../hooks/useStore';
+import { brandVars } from '../../lib/brand';
 
 /**
- * MainLayout — the shell for all authenticated admin pages.
- *
- * Layout:
- *   [Sidebar 248px fixed] | [Topbar sticky + <Outlet /> scrollable]
+ * Shell for all authenticated agency pages.
+ * The agency's brand colour (Settings → Branding) is applied here as CSS variables,
+ * so primary buttons, active nav and tabs follow it live.
  */
 export default function MainLayout() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { brand } = useStore();
   return (
-    <div className="min-h-screen bg-canvas">
-      <Sidebar />
-
-      {/* Main area offset by sidebar width */}
-      <div className="ml-[248px] flex flex-col min-h-screen">
-        <Topbar />
-
-        {/* Page content */}
-        <main className="flex-1">
-          <Outlet />
-        </main>
-      </div>
-    </div>
+    <AppShell
+      style={brandVars(brand)}
+      tint={brand.tint}
+      header={<Topbar onMenu={() => setMenuOpen(true)} />}
+      sidebar={<Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />}
+    >
+      <Outlet />
+    </AppShell>
   );
 }

@@ -1,0 +1,43 @@
+<svg width="640" height="510" viewBox="195 220 640 510" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Back folder: deep royal blue, darker at the top right -->
+    <linearGradient id="uf-back" x1="215" y1="240" x2="740" y2="600" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4aa6fb"/>
+      <stop offset="0.55" stop-color="#2a6ff0"/>
+      <stop offset="1" stop-color="#1550d0"/>
+    </linearGradient>
+    <!-- Front folder: bright blue, lighter toward the bottom right -->
+    <linearGradient id="uf-front" x1="240" y1="360" x2="800" y2="712" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3f8ef7"/>
+      <stop offset="0.6" stop-color="#3a7cf4"/>
+      <stop offset="1" stop-color="#8ccbff"/>
+    </linearGradient>
+    <linearGradient id="uf-tab" x1="279" y1="288" x2="404" y2="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d6ecff"/>
+      <stop offset="1" stop-color="#8fc8ff"/>
+    </linearGradient>
+    <linearGradient id="uf-shine" x1="280" y1="351" x2="640" y2="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+
+  <!-- back folder (soft light rim, then blue fill) -->
+  <path d="M207 593V365C207 290 262 230 334 230H413C440 230 459 239 477 258C493 274 512 278 534 278H645C693 278 728 308 734 353L750 586C755 644 711 688 651 688H302C243 688 207 654 207 593Z" fill="#dff0ff" fill-opacity="0.9"/>
+  <path d="M212 592V366C212 293 266 237 335 237H413C439 237 457 245 474 263C491 279 511 282 535 282H644C691 282 723 311 729 355L744 587C749 642 709 682 650 682H303C246 682 212 651 212 592Z" fill="url(#uf-back)"/>
+
+  <!-- tab pill -->
+  <path d="M300 288H384C396 288 404 297 404 309C404 321 396 330 384 330H300C288 330 279 321 279 309C279 297 288 288 300 288Z" fill="url(#uf-tab)"/>
+
+  <!-- front folder (light rim + blue fill) -->
+  <path d="M390 349H727C788 349 829 395 814 457L768 629C754 684 720 716 666 716H307C244 716 208 675 222 612L273 434C289 381 329 349 390 349Z" fill="#e8f4ff" fill-opacity="0.95"/>
+  <path d="M391 354H726C784 354 824 397 809 456L763 628C749 681 718 711 665 711H308C248 711 213 673 227 613L278 436C293 385 332 354 391 354Z" fill="url(#uf-front)"/>
+
+  <!-- top-left highlight -->
+  <path d="M391 351H727C775 351 810 380 814 420C800 380 770 357 725 357H391C335 357 296 386 277 434C291 381 333 351 391 351Z" fill="url(#uf-shine)"/>
+
+  <!-- face -->
+  <path d="M431 500C431 492 438 485 446 485C454 485 461 492 461 500V514C461 522 455 529 446 529C437 529 431 522 431 514V500Z" fill="#fff"/>
+  <path d="M599 500C599 492 606 485 614 485C622 485 629 492 629 500V514C629 522 623 529 614 529C605 529 599 522 599 514V500Z" fill="#fff"/>
+  <path d="M484 551C479 544 483 537 489 537C494 536 497 539 501 544C514 560 545 560 560 544C564 538 567 536 572 537C579 538 580 545 576 551C557 581 505 581 484 551Z" fill="#fff"/>
+</svg>

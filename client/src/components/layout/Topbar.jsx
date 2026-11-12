@@ -1,74 +1,69 @@
 import { useLocation } from 'react-router-dom';
-import { Icon, IconButton } from '../ui';
+import { Icon, Avatar, AgencyMark } from '../ui';
 import { useAuth } from '../../context/AuthContext';
-import { Avatar } from '../ui';
+import { HEADER_H } from './nav';
 
-/** Map route paths to human-readable page titles */
-const PAGE_TITLES = {
-  '/dashboard':    { title: 'Dashboard',          sub: 'Overview of activities and operations' },
-  '/calendar':     { title: 'Calendar',           sub: 'Monthly view of scheduled activities' },
-  '/activities':   { title: 'Activities',         sub: 'Manage and track training activities' },
-  '/participants': { title: 'Participants',        sub: 'Registry of enrolled participants' },
-  '/attendance':   { title: 'Attendance',         sub: 'Track participant check-ins' },
-  '/budget':       { title: 'Budget',             sub: 'Annual budget and cost tracking' },
-  '/reports':      { title: 'Reports & Analytics',sub: 'Data insights and outcome reports' },
-  '/messaging':    { title: 'Messaging',          sub: 'Group announcements and threads' },
-  '/about':        { title: 'About Agency',       sub: 'Agency profile and public information' },
-  '/settings':     { title: 'Agency Settings',    sub: 'Branding, categories, and configuration' },
+const ROUTES = {
+  dashboard:    ['Workspace', 'Dashboard'],
+  calendar:     ['Workspace', 'Calendar'],
+  activities:   ['Workspace', 'Activities'],
+  participants: ['Workspace', 'Participants'],
+  budget:       ['Workspace', 'Budget'],
+  reports:      ['Workspace', 'Reports'],
+  messaging:    ['Administration', 'Messaging'],
+  about:        ['Administration', 'About agency'],
+  settings:     ['Administration', 'Agency settings'],
 };
 
-export function Topbar() {
+/**
+ * Topbar — breadcrumb on the left; search, role switch, alerts and account grouped on the right.
+ * The page title itself lives in the page (one H1 per screen).
+ */
+export function Topbar({ onMenu }) {
+  const { user, switchRole } = useAuth();
   const { pathname } = useLocation();
-  const { user } = useAuth();
-
-  // Match the current page (also handles /activities/:id)
-  const baseRoute = '/' + pathname.split('/')[1];
-  const page = PAGE_TITLES[baseRoute] ?? { title: 'TMIS', sub: '' };
+  const [section, page] = ROUTES[pathname.split('/')[1]] ?? ['Workspace', ''];
 
   return (
-    <header className="sticky top-0 z-10 h-16 bg-white border-b border-line flex items-center justify-between px-8 gap-6">
-
-      {/* ── Page title ── */}
-      <div className="min-w-0">
-        <h1 className="text-[15px] font-bold text-ink-950 leading-tight tracking-[-0.3px] truncate">
-          {page.title}
-        </h1>
-        {page.sub && (
-          <p className="text-[10px] text-ink-500 mt-0.5 truncate">{page.sub}</p>
-        )}
+    <header className={`flex ${HEADER_H} flex-shrink-0 items-center gap-4 px-5 sm:px-8 lg:px-10`}>
+      {/* Left: menu (mobile) + breadcrumb */}
+      <div className="flex min-w-0 items-center gap-3">
+        <button onClick={onMenu} aria-label="Open menu" className="grid h-10 w-10 place-items-center rounded-full text-ink-600 hover:bg-white/60 lg:hidden">
+          <Icon name="menu" size={18} />
+        </button>
+        <AgencyMark size={30} className="lg:hidden" />
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-2 text-[13px] sm:flex">
+          <span className="text-ink-400">{section}</span>
+          {page && <><Icon name="chevron" size={12} className="-rotate-90 text-ink-400" /><span className="truncate text-ink-800">{page}</span></>}
+        </nav>
       </div>
 
-      {/* ── Right actions ── */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-
-        {/* Search */}
-        <div className="hidden md:flex items-center gap-2 px-3 h-9 rounded-lg border border-line bg-canvas text-ink-500 w-52">
+      {/* Right: everything else, grouped */}
+      <div className="ml-auto flex items-center gap-3">
+        <label className="glass-input hidden h-10 w-[280px] items-center gap-2.5 rounded-full px-4 text-ink-500 md:flex">
           <Icon name="search" size={15} />
-          <input
-            type="text"
-            placeholder="Search activities…"
-            className="flex-1 bg-transparent text-xs text-ink-950 outline-none placeholder:text-ink-500"
-          />
-        </div>
+          <span className="sr-only">Search</span>
+          <input type="text" placeholder="Search…" className="min-w-0 flex-1 bg-transparent text-[13px] text-ink-950 outline-none placeholder:text-ink-400" />
+        </label>
 
-        {/* Notifications */}
-        <IconButton icon="bell" label="Notifications" size={36} />
+        <label className="hidden items-center gap-2 text-xs text-ink-500 xl:flex">
+          View as
+          <select value={user?.role ?? ''} onChange={(e) => switchRole(e.target.value)} aria-label="View as role" className="glass-input h-10 rounded-full px-3.5 text-xs text-ink-800">
+            {['Agency Administrator', 'Committee Member', 'Resource Person'].map((r) => <option key={r}>{r}</option>)}
+          </select>
+        </label>
 
-        {/* Divider */}
-        <div className="w-px h-5 bg-line mx-1" />
+        <button aria-label="Notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-ink-600 transition-colors hover:bg-white/60">
+          <Icon name="bell" size={18} />
+          <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand-600 px-1 text-[9px] font-medium text-white">3</span>
+        </button>
 
-        {/* User chip */}
-        <button className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-green-50 transition-colors">
-          <Avatar name={user?.name ?? 'User'} size="sm" />
-          <div className="text-left hidden lg:block">
-            <strong className="block text-xs font-semibold text-ink-950 leading-none">
-              {user?.name ?? 'User'}
-            </strong>
-            <small className="block text-[9px] text-ink-500 mt-0.5">
-              {user?.agency ?? 'Agency'}
-            </small>
-          </div>
-          <Icon name="chevron" size={14} className="text-ink-400" />
+        <button className="flex items-center gap-3 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-white/60">
+          <Avatar name={user?.name ?? 'User'} size="md" />
+          <span className="hidden text-left lg:block">
+            <strong className="block text-[13px] font-medium leading-none text-ink-950">{user?.name ?? 'User'}</strong>
+            <small className="mt-1 block text-[11px] leading-none text-ink-500">{user?.role ?? 'Agency'}</small>
+          </span>
         </button>
       </div>
     </header>

@@ -1,117 +1,259 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
 @import "tailwindcss";
 
-/* ─── Design Tokens ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   UniFyle design system — "frosted window" look
+   Light slate type at regular/medium weight, soft white glass on a
+   sky-to-lavender backdrop, pill buttons, status shown as dot + text.
+   ═══════════════════════════════════════════════════════════════════ */
+
 @theme {
-  --color-green-950: #113a2b;
-  --color-green-900: #174a36;
-  --color-green-800: #1c5b41;
-  --color-green-700: #24704e;
-  --color-green-600: #2d8a60;
-  --color-green-100: #e1f2e9;
-  --color-green-50:  #f0f8f4;
+  /* Brand blue (taken from the reference UI's primary button) */
+  --color-brand-950: #14295e;
+  --color-brand-900: #1f3c80;
+  --color-brand-800: #284fa6;
+  --color-brand-700: #2f5fcc;
+  --color-brand-600: #3b72e6;
+  --color-brand-500: #4a82ee;
+  --color-brand-400: #6f9cf5;
+  --color-brand-200: #c8d9ff;
+  --color-brand-100: #e3ecff;
+  --color-brand-50:  #f2f6ff;
 
   --color-amber-500: #f2b43c;
+  --color-amber-400: #f6c560;
   --color-amber-100: #fff1cc;
 
   --color-blue-600:  #2878c7;
   --color-blue-100:  #e4f0fb;
-
+  --color-violet-700: #6a4bb8;
   --color-violet-100: #eee8fb;
 
-  --color-ink-950:   #17221d;
-  --color-ink-800:   #283a32;
-  --color-ink-600:   #5c6d65;
-  --color-ink-500:   #76847d;
+  /* Slate ink — soft, never pure black */
+  --color-ink-950: #1d2433;
+  --color-ink-800: #343c52;
+  --color-ink-600: #565f78;
+  --color-ink-500: #6b7590;
+  --color-ink-400: #8d95ab;
 
-  --color-line:      #dde5e0;
-  --color-canvas:    #f5f7f5;
-  --color-danger:    #b7433e;
-  --color-surface:   #ffffff;
+  --color-line:    #e3e7f1;
+  --color-canvas:  #eaf1fd;
+  --color-danger:  #c0443f;
+  --color-surface: #ffffff;
 
-  --font-sans: "Inter", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-card:   0 2px 8px rgba(23, 34, 29, 0.06);
-  --shadow-panel:  0 10px 30px rgba(29, 62, 45, 0.08);
-  --shadow-modal:  0 24px 60px rgba(0, 0, 0, 0.18);
-  --shadow-glass:  0 8px 32px rgba(23, 34, 29, 0.12);
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-rise:    rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-/* ─── Base Reset ─────────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
+:root {
+  --glass-bg:        rgba(255, 255, 255, 0.58);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-bg-soft:   rgba(255, 255, 255, 0.36);
+  --glass-border:    rgba(255, 255, 255, 0.85);
+  --glass-divider:   rgba(90, 110, 170, 0.12);
+  --glass-blur:      blur(22px) saturate(160%);
+  --glass-shadow:    0 6px 24px rgba(70, 100, 200, 0.08);
+  --glass-shadow-lg: 0 24px 60px rgba(70, 100, 200, 0.16);
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: "Inter", sans-serif;
-  color: #17221d;
-  background: #f5f7f5;
-  -webkit-font-smoothing: antialiased;
+/* ─── Base ───────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-ink-800);
+    background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss03";
+  }
+
+  h1, h2, h3, h4, h5, h6, p { margin: 0; }
+  h1, h2, h3, h4 { font-weight: 500; color: var(--color-ink-950); }
+  strong { font-weight: 500; }
+
+  button { cursor: pointer; color: inherit; font: inherit; }
+  input, select, textarea { font: inherit; }
+
+  :focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
 }
 
-h1, h2, h3, h4, h5, h6, p {
-  margin: 0;
+/* ─── Backgrounds ────────────────────────────────────────────────── */
+@layer components {
+  /* Sky → lavender mesh. Glass needs colour behind it to blur. */
+  .app-bg {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 640px at 0% 0%,    rgba(160, 214, 250, 0.95), transparent 60%),
+      radial-gradient(760px 600px at 100% 8%,  rgba(206, 196, 250, 0.85), transparent 62%),
+      radial-gradient(900px 700px at 50% 110%, rgba(176, 208, 250, 0.9),  transparent 62%),
+      linear-gradient(160deg, #dcecfd 0%, #e4e6fb 100%);
+    background-attachment: fixed;
+  }
+
+  /* "Tint the console glass with the brand color": background follows --bh (brand hue) */
+  .app-bg[data-tint="on"] {
+    background:
+      radial-gradient(900px 640px at 0% 0%,    hsl(var(--bh) 85% 84% / 0.95), transparent 60%),
+      radial-gradient(760px 600px at 100% 8%,  hsl(calc(var(--bh) + 50) 75% 88% / 0.85), transparent 62%),
+      radial-gradient(900px 700px at 50% 110%, hsl(calc(var(--bh) - 12) 80% 86% / 0.9), transparent 62%),
+      linear-gradient(160deg, hsl(var(--bh) 80% 95%), hsl(calc(var(--bh) + 20) 65% 93%));
+    background-attachment: fixed;
+  }
+
+  .auth-bg {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 700px at 0% 0%,    rgba(160, 214, 250, 0.95), transparent 60%),
+      radial-gradient(800px 600px at 100% 100%, rgba(214, 196, 250, 0.8), transparent 60%),
+      radial-gradient(600px 500px at 85% 5%,   rgba(190, 220, 255, 0.7), transparent 65%),
+      linear-gradient(160deg, #e3f0fe 0%, #e6e8fb 100%);
+  }
+
+  .orb {
+    position: absolute;
+    z-index: -1;
+    border-radius: 9999px;
+    filter: blur(60px);
+    pointer-events: none;
+    animation: drift 18s ease-in-out infinite alternate;
+  }
+
+  .grid-texture { display: none; }
+
+  /* The big floating window that holds sidebar + header + content */
+  .window {
+    background: rgba(255, 255, 255, 0.42);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 28px;
+    box-shadow: 0 30px 80px rgba(70, 100, 200, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  /* The content sheet inside the window */
+  .sheet {
+    background: rgba(255, 255, 255, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    border-left: 1px solid rgba(255, 255, 255, 0.9);
+    border-top-left-radius: 24px;
+  }
 }
 
-button {
-  cursor: pointer;
-  color: inherit;
-  font: inherit;
-}
+/* ─── Glass surfaces ─────────────────────────────────────────────── */
+@layer components {
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
 
-input, select, textarea {
-  font: inherit;
-}
+  .glass-strong {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(26px) saturate(170%);
+    -webkit-backdrop-filter: blur(26px) saturate(170%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-lg);
+  }
 
-/* ─── Glassmorphism Utilities ────────────────────────────────────── */
-@layer utilities {
-  /* Light glass — for cards on colored backgrounds */
+  .glass-inset {
+    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+  }
+
   .glass {
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.32);
   }
 
-  /* Dark glass — for overlays on dark/green backgrounds */
-  .glass-dark {
-    background: rgba(17, 58, 43, 0.65);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-  }
+  .glass-auth { background: var(--glass-bg-strong); border: 1px solid var(--glass-border); }
+  .glass-dark { background: rgba(20, 41, 94, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.1); }
+  .glass-soft { background: var(--glass-bg-strong); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); }
 
-  /* Soft glass — for cards on light backgrounds */
-  .glass-soft {
-    background: rgba(255, 255, 255, 0.72);
+  .glass-backdrop {
+    background: rgba(170, 190, 240, 0.28);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.60);
-    box-shadow: 0 8px 32px rgba(23, 34, 29, 0.10);
   }
 
-  /* Modal backdrop */
-  .glass-backdrop {
-    background: rgba(17, 58, 43, 0.50);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+  .glass-input {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(100, 120, 180, 0.16);
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  }
+  .glass-input:focus,
+  .glass-input:focus-within {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px rgba(74, 130, 238, 0.18);
+    outline: none;
+  }
+  .glass-input-dark { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16); color: #fff; }
+
+  .btn-sheen { position: relative; overflow: hidden; }
+  .btn-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+  }
+  .btn-sheen:hover::after { transform: translateX(120%); }
+
+  /* Pastel banner used for hero cards (green → blue → lavender) */
+  .banner-pastel {
+    background:
+      radial-gradient(520px 260px at 0% 0%,   rgba(214, 240, 190, 0.95), transparent 70%),
+      radial-gradient(520px 300px at 55% 100%, rgba(190, 222, 252, 0.95), transparent 70%),
+      linear-gradient(120deg, #e2f3d2 0%, #dcebfb 55%, #e3dcf8 100%);
   }
 }
+
+/* ─── Fallbacks & accessibility ─────────────────────────────────── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .window, .sheet, .glass-panel, .glass-soft { background: rgba(255, 255, 255, 0.9); }
+  .glass-strong { background: rgba(255, 255, 255, 0.96); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .window, .sheet, .glass-panel, .glass-soft, .glass-strong { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────── */
+@keyframes drift { 0% { transform: translate3d(0,0,0) scale(1); } 100% { transform: translate3d(40px,-30px,0) scale(1.08); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); } 20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); } 40%, 60% { transform: translateX(4px); }
+}
+.animate-shake { animation: shake 0.4s ease both; }
+
+/* Hide scrollbars on horizontally scrolling tab rows */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #dde5e0;
-  border-radius: 99px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #5c6d65;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(90, 110, 170, 0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(90, 110, 170, 0.4); }

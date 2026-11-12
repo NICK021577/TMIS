@@ -1,63 +1,43 @@
 import { Icon } from './Icon';
 
 /**
- * Button — primary / secondary / ghost / danger variants
+ * Button — pill shaped. primary (solid blue) / secondary (white outline) / ghost / danger
  */
 export function Button({
-  children,
-  variant = 'primary',
-  icon,
-  iconRight,
-  onClick,
-  type = 'button',
-  disabled = false,
-  className = '',
-  size = 'md',
+  children, variant = 'primary', icon, iconRight, onClick, type = 'button',
+  disabled = false, className = '', size = 'md', ...rest
 }) {
   const base =
-    'inline-flex items-center justify-center gap-2 font-semibold rounded-lg border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap';
+    'inline-flex items-center justify-center gap-2 rounded-full border font-medium whitespace-nowrap transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50';
 
   const sizes = {
-    sm: 'h-8  px-3  text-xs',
-    md: 'h-9  px-4  text-xs',
-    lg: 'h-11 px-5  text-sm',
+    sm: 'h-8 px-3.5 text-xs',
+    md: 'h-9 px-4 text-[13px]',
+    lg: 'h-11 px-6 text-sm',
   };
 
   const variants = {
-    primary:
-      'bg-green-700 text-white border-transparent shadow-sm hover:bg-green-800 active:bg-green-900',
-    secondary:
-      'bg-white text-ink-800 border-line hover:bg-green-50 active:bg-green-100',
-    ghost:
-      'bg-transparent text-green-700 border-transparent hover:bg-green-50',
-    danger:
-      'bg-danger text-white border-transparent hover:bg-red-700',
-    'ghost-white':
-      'bg-transparent text-white/80 border-white/20 hover:bg-white/10 hover:text-white',
+    primary:   'border-transparent bg-brand-600 text-white shadow-[0_4px_12px_rgba(59,114,230,0.28)] hover:bg-brand-700 active:bg-brand-800',
+    secondary: 'border-white bg-white/75 text-ink-800 shadow-[0_1px_4px_rgba(70,100,200,0.10)] ring-1 ring-black/5 hover:bg-white',
+    ghost:     'border-transparent bg-transparent text-brand-700 hover:bg-white/60',
+    danger:    'border-transparent bg-danger text-white hover:bg-red-700',
+    'ghost-white': 'border-white/30 bg-transparent text-white hover:bg-white/15',
   };
 
   return (
-    <button
-      type={type}
-      disabled={disabled}
-      onClick={onClick}
-      className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
-    >
-      {icon && <Icon name={icon} size={size === 'sm' ? 14 : 16} />}
+    <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...rest}>
+      {icon && <Icon name={icon} size={size === 'sm' ? 14 : 15} />}
       {children}
-      {iconRight && <Icon name={iconRight} size={size === 'sm' ? 14 : 16} />}
+      {iconRight && <Icon name={iconRight} size={size === 'sm' ? 14 : 15} />}
     </button>
   );
 }
 
-/**
- * IconButton — square icon-only button
- */
+/** IconButton — round icon-only button */
 export function IconButton({ icon, onClick, label, variant = 'default', size = 36, className = '' }) {
   const variants = {
-    default: 'bg-white border-line text-ink-600 hover:bg-green-50',
-    ghost:   'bg-transparent border-transparent text-white/70 hover:bg-white/10 hover:text-white',
-    green:   'bg-green-100 border-transparent text-green-700 hover:bg-green-200',
+    default: 'border-white bg-white/75 text-ink-600 ring-1 ring-black/5 hover:bg-white hover:text-ink-950',
+    ghost:   'border-transparent bg-transparent text-ink-500 hover:bg-white/60 hover:text-ink-950',
   };
   return (
     <button
@@ -65,9 +45,9 @@ export function IconButton({ icon, onClick, label, variant = 'default', size = 3
       onClick={onClick}
       aria-label={label}
       style={{ width: size, height: size }}
-      className={`inline-grid place-items-center rounded-lg border transition-colors ${variants[variant]} ${className}`}
+      className={`inline-grid place-items-center rounded-full border transition-colors ${variants[variant]} ${className}`}
     >
-      <Icon name={icon} size={size * 0.47} />
+      <Icon name={icon} size={Math.round(size * 0.46)} />
     </button>
   );
 }

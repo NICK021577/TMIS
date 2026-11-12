@@ -1,164 +1,184 @@
-import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { Button, Icon } from '../../ui';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PageWrapper, PageHeader, SectionLabel } from '../../layout/PageWrapper';
+import { Badge, Button, Icon, Metric, Panel, PanelTitle, ProgressBar } from '../../ui';
+import { useAuth } from '../../../context/AuthContext';
+import { useStore } from '../../../hooks/useStore';
+import { ACTIVITY_SUMMARY, AGENCY, DASHBOARD_STATS, TREND, peso } from '../../../data/mockData';
+import { buildEvents, useBudgetNumbers } from '../../../lib/budgetModel';
 
-// ─── Stat Card ───────────────────────────────────────────────────────────────
-function StatCard({ label, value, delta, icon, color }) {
-  const colors = {
-    green:  { icon: 'bg-green-100 text-green-700',  delta: 'text-green-600'  },
-    blue:   { icon: 'bg-blue-100  text-blue-600',   delta: 'text-blue-600'   },
-    amber:  { icon: 'bg-amber-100 text-amber-700',  delta: 'text-amber-600'  },
-    violet: { icon: 'bg-violet-100 text-violet-700', delta: 'text-violet-600' },
-  };
-  const c = colors[color] ?? colors.green;
+/**
+ * Layout follows the reference UI: pastel hero banner → quiet metrics →
+ * a titled list card → cards in a row. One focal point (the hero).
+ */
 
+/** Decorative 3D-ish shapes for the hero, drawn with CSS only */
+function HeroArt() {
   return (
-    <div className="bg-white border border-line rounded-xl p-[18px] grid grid-cols-[42px_1fr_auto] gap-3 items-center shadow-card hover:-translate-y-px hover:shadow-panel transition-all duration-200">
-      <span className={`w-[42px] h-[42px] grid place-items-center rounded-[10px] ${c.icon}`}>
-        <Icon name={icon} size={20} />
+    <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[42%] sm:block">
+      <span className="absolute right-[12%] top-[14%] h-[132px] w-[132px] rounded-full bg-[radial-gradient(circle_at_30%_25%,#c9b6ff,#8a63f0_55%,#6a43d8)] shadow-[0_18px_30px_rgba(106,67,216,0.35)]">
+        <span className="absolute left-1/2 top-1/2 h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_70%_70%,#d9e6fb,#cfdcf7)] shadow-[inset_0_6px_12px_rgba(106,67,216,0.35)]" />
       </span>
-      <div>
-        <span className="block text-xs text-ink-600">{label}</span>
-        <strong className="block text-2xl font-bold text-ink-950 mt-0.5 leading-none">{value}</strong>
-        {delta && <small className={`block text-[9px] mt-1 font-medium ${c.delta}`}>{delta}</small>}
-      </div>
+      <span className="absolute right-[44%] top-[22%] h-[44px] w-[44px] rotate-12 rounded-xl bg-gradient-to-br from-[#ff8a6b] to-[#e84a4a] shadow-[0_10px_18px_rgba(232,74,74,0.35)]" />
+      <span className="absolute right-[40%] top-[58%] h-0 w-0 -rotate-12 border-x-[22px] border-b-[40px] border-x-transparent border-b-[#f25f7a] drop-shadow-[0_8px_10px_rgba(242,95,122,0.4)]" />
+      <span className="absolute right-[36%] top-[6%] h-[22px] w-[22px] rounded-full bg-[radial-gradient(circle_at_30%_30%,#d9c8ff,#8a63f0)]" />
     </div>
   );
 }
 
-// ─── Recent Activity Row ──────────────────────────────────────────────────────
-function ActivityRow({ title, type, date, status, participants }) {
-  const statusColors = {
-    Upcoming:  'bg-amber-100 text-yellow-800',
-    Ongoing:   'bg-blue-100  text-blue-600',
-    Completed: 'bg-green-100 text-green-700',
-    Draft:     'bg-[#edf0ee] text-ink-600',
-  };
-  const [mon, day] = date.toUpperCase().split(' ');
-
+function Hero({ onClose }) {
   return (
-    <div className="flex items-center gap-4 px-5 py-3 border-b border-line last:border-0 hover:bg-green-50 transition-colors cursor-pointer">
-      <div className="w-11 h-11 rounded-lg bg-green-50 text-green-800 grid place-content-center text-center flex-shrink-0">
-        <strong className="block text-base font-bold leading-none">{day}</strong>
-        <span className="block text-[8px] font-bold mt-0.5">{mon}</span>
+    <section className="banner-pastel relative mb-2 overflow-hidden rounded-[20px] p-6 ring-1 ring-white/80 sm:p-7">
+      <HeroArt />
+      <button onClick={onClose} aria-label="Dismiss" className="absolute left-auto right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full text-ink-500 hover:bg-white/60 sm:hidden">
+        <Icon name="close" size={14} />
+      </button>
+      <div className="relative max-w-[460px]">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-950 text-[11px] font-medium text-white">{AGENCY.shortName.slice(0, 2)}</span>
+          <h2 className="text-[17px] font-medium text-ink-950">Welcome to {AGENCY.shortName}</h2>
+        </div>
+        <p className="text-[13px] leading-relaxed text-ink-600">{AGENCY.name}. {AGENCY.mission}</p>
+        <div className="mt-5 flex gap-2">
+          <Button onClick={onClose}>Got it</Button>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <strong className="block text-xs font-semibold text-ink-950 truncate">{title}</strong>
-        <span className="block text-[9px] text-ink-500 mt-0.5">{type}</span>
-      </div>
-      <span className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColors[status] ?? statusColors.Draft}`}>
-        {status}
-      </span>
-      <span className="text-[9px] text-ink-400 flex items-center gap-1 flex-shrink-0">
-        <Icon name="users" size={12} />
-        {participants}
-      </span>
-    </div>
+    </section>
   );
 }
 
-// ─── Dashboard Page ───────────────────────────────────────────────────────────
-const STATS = [
-  { label: 'Total Activities',    value: '24',    delta: '+2 this month',     icon: 'clock',    color: 'green'  },
-  { label: 'Total Participants',  value: '1,284', delta: '+68 this quarter',  icon: 'users',    color: 'blue'   },
-  { label: 'Upcoming Activities', value: '7',     delta: 'Next: Jun 17',      icon: 'calendar', color: 'amber'  },
-  { label: 'Budget Utilized',     value: '73%',   delta: '₱1.4M remaining',   icon: 'award',    color: 'violet' },
-];
-
-const RECENT = [
-  { title: 'Rubber Production and Tapping Technology', type: 'Skills Training',   date: 'JUN 17', status: 'Upcoming',  participants: 42 },
-  { title: 'Community-Based Rubber Nursery Mgmt',      type: 'Extension Activity',date: 'JUN 10', status: 'Ongoing',   participants: 36 },
-  { title: 'Pest and Disease Management for Rubber',   type: 'Seminar',           date: 'MAY 22', status: 'Completed', participants: 68 },
-  { title: 'Results-Based Monitoring Workshop',        type: 'Workshop',          date: 'JUL 08', status: 'Upcoming',  participants: 28 },
-  { title: 'Agricultural Innovation Systems Forum',    type: 'Forum',             date: 'AUG 14', status: 'Draft',     participants: 12 },
-];
+function TrendChart() {
+  return (
+    <div className="flex h-[190px] items-end gap-3 border-b border-[var(--glass-divider)] px-1 pt-2">
+      {TREND.map((bar, i) => {
+        const current = i === TREND.length - 1;
+        return (
+          <div key={bar.m} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+            <span className="text-[11px] text-ink-500">{Math.round(bar.v / 8)}</span>
+            <div
+              className={`w-full max-w-[40px] rounded-t-xl ${current ? 'bg-gradient-to-t from-brand-600 to-brand-400' : 'bg-gradient-to-t from-brand-200 to-brand-100'}`}
+              style={{ height: `${bar.v}%` }}
+            />
+            <small className="pb-2 text-[11px] text-ink-500">{bar.m}</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Dashboard({ notify }) {
+  const navigate = useNavigate();
+  const { role } = useAuth();
+  const { activities, items, plans, published, annual } = useStore();
+  const [showHero, setShowHero] = useState(true);
+
+  const isAdmin = role === 'Agency Administrator' || role === 'Super Admin';
+  const budget = useBudgetNumbers(activities, items, annual);
+  const events = buildEvents(activities, plans, items, published).filter((e) => e.end >= '2025-06-18').slice(0, 3);
+  const { all, completed, ongoing, upcoming } = ACTIVITY_SUMMARY;
+  const utilization = Math.round((budget.actual / annual) * 100);
+  const live = activities.filter((a) => a.status === 'Ongoing' || a.status === 'Upcoming');
+
   return (
     <PageWrapper>
-      <PageHeader
-        eyebrow="PRRI — Pilot Agency"
-        title="Dashboard"
-        subtitle="Here's what's happening across your agency's activities."
-      >
-        <Button variant="secondary" icon="download">Export</Button>
-        <Button variant="primary"   icon="plus" onClick={() => notify?.('Create activity coming soon')}>
-          New Activity
-        </Button>
+      <PageHeader title="Good morning, Alexis" subtitle={`Here’s what’s happening across ${AGENCY.shortName} training and extension activities.`}>
+        <Button variant="secondary" icon="download" onClick={() => notify?.('Summary exported')}>Export summary</Button>
+        <Button icon="plus" onClick={() => navigate('/activities?new=1')}>Create activity</Button>
       </PageHeader>
 
-      {/* ── Stat grid ── */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5 mb-5">
-        {STATS.map((s) => <StatCard key={s.label} {...s} />)}
+      {showHero && <Hero onClose={() => setShowHero(false)} />}
+
+      <SectionLabel>Overview</SectionLabel>
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {DASHBOARD_STATS.map((s) => <Metric key={s.label} label={s.label} value={s.value} note={s.change} icon={s.icon} />)}
       </div>
 
-      {/* ── Main grid ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.65fr_1fr] gap-4">
-
-        {/* Recent activities panel */}
-        <div className="bg-white border border-line rounded-xl overflow-hidden shadow-card">
-          <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
-            <div>
-              <h2 className="text-base font-bold text-ink-950 tracking-[-0.2px]">Recent Activities</h2>
-              <p className="text-xs text-ink-500 mt-1">Latest training and extension activities</p>
-            </div>
-            <Button variant="ghost" size="sm" iconRight="arrow">View all</Button>
-          </div>
-          <div>
-            {RECENT.map((a) => <ActivityRow key={a.title} {...a} />)}
-          </div>
-        </div>
-
-        {/* Right column */}
-        <div className="space-y-4">
-
-          {/* Quick stats / completion card */}
-          <div className="bg-white border border-line rounded-xl p-5 shadow-card">
-            <h2 className="text-base font-bold text-ink-950 mb-1">Activity Completion</h2>
-            <p className="text-xs text-ink-500 mb-4">Year-to-date progress</p>
-            <div className="h-1.5 w-full rounded-full bg-green-100 overflow-hidden mb-3">
-              <div className="h-full w-[73%] rounded-full bg-green-600" />
-            </div>
-            <ul className="space-y-2">
-              {[
-                { label: 'Completed',  count: 14, pct: '58%',  color: 'bg-green-600' },
-                { label: 'Upcoming',   count: 7,  pct: '29%',  color: 'bg-amber-500' },
-                { label: 'Draft',      count: 3,  pct: '13%',  color: 'bg-[#dde5e0]' },
-              ].map((r) => (
-                <li key={r.label} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-2 text-ink-600">
-                    <i className={`w-2 h-2 rounded-full inline-block ${r.color}`} />
-                    {r.label}
-                  </span>
-                  <span className="font-semibold text-ink-950">{r.count} <span className="text-ink-400 font-normal">({r.pct})</span></span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Live / upcoming highlight */}
-          <div className="rounded-xl bg-gradient-to-br from-green-900 to-green-700 text-white p-5 relative overflow-hidden shadow-panel">
-            <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]" />
-            <div className="relative z-10">
-              <span className="flex items-center gap-1.5 text-green-200 text-[9px] font-bold uppercase tracking-widest mb-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                Ongoing Now
+      <SectionLabel action={<Button variant="ghost" size="sm" iconRight="arrow" onClick={() => navigate('/activities')}>View all activities</Button>}>
+        Ongoing and upcoming
+      </SectionLabel>
+      <Panel pad={false} className="overflow-hidden p-1.5">
+        {live.map((a) => {
+          const [mon, day] = a.dateShort.split(' ');
+          return (
+            <div key={a.id} className="flex items-center gap-4 rounded-xl px-3 py-3 transition-colors hover:bg-white/50">
+              <span className="glass-inset grid h-11 w-11 flex-shrink-0 place-content-center rounded-xl text-center text-brand-800">
+                <strong className="block text-[15px] font-medium leading-none">{day}</strong>
+                <span className="mt-0.5 block text-[9px] text-ink-500">{mon}</span>
               </span>
-              <strong className="block text-sm font-bold leading-snug">
-                Community-Based Rubber Nursery Management
-              </strong>
-              <small className="block text-white/60 text-[9px] mt-1">
-                Ipil, Zamboanga Sibugay · Jun 10–12, 2025
-              </small>
-              <div className="mt-4 pt-3 border-t border-white/15 flex justify-between items-center text-xs font-semibold">
-                <span className="text-white/70">36 / 40 participants checked in</span>
-                <button className="text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1">
-                  View <Icon name="arrow" size={13} />
-                </button>
-              </div>
+              <span className="min-w-0 flex-1">
+                <strong className="block truncate text-[13px] font-medium text-ink-950">{a.title}</strong>
+                <span className="block truncate text-xs text-ink-500">{a.type} · {a.venue}</span>
+              </span>
+              <span className="hidden w-32 sm:block"><Badge value={a.status} /></span>
+              <span className="hidden w-14 items-center justify-end gap-1 text-xs text-ink-500 md:flex"><Icon name="users" size={13} />{a.participants}</span>
+              <Button variant="secondary" size="sm" onClick={() => navigate(`/activities/${a.id}`)}>Open</Button>
             </div>
-          </div>
+          );
+        })}
+      </Panel>
 
-        </div>
+      <SectionLabel>Performance</SectionLabel>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <Panel>
+          <PanelTitle title="Activity trends" subtitle="Activities conducted over the last six months" />
+          <TrendChart />
+        </Panel>
+        <Panel>
+          <PanelTitle title="Implementation status" subtitle="Current activity portfolio" />
+          <div className="flex items-end justify-between">
+            <strong className="text-[30px] font-medium leading-none tracking-[-0.8px] text-ink-950">{all}</strong>
+            <span className="pb-1 text-xs text-ink-500">activities this year</span>
+          </div>
+          <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-brand-900/[0.07]" role="img" aria-label={`${completed} completed, ${ongoing} ongoing, ${upcoming} upcoming`}>
+            <div className="bg-emerald-400" style={{ width: `${(completed / all) * 100}%` }} />
+            <div className="bg-brand-500" style={{ width: `${(ongoing / all) * 100}%` }} />
+            <div className="bg-amber-400" style={{ width: `${(upcoming / all) * 100}%` }} />
+          </div>
+          <ul className="mt-4 space-y-2">
+            {[['Completed', completed, 'bg-emerald-400'], ['Ongoing', ongoing, 'bg-brand-500'], ['Upcoming', upcoming, 'bg-amber-400']].map(([l, n, c]) => (
+              <li key={l} className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-ink-600"><i className={`h-1.5 w-1.5 rounded-full ${c}`} />{l}</span>
+                <strong className="font-medium text-ink-950">{n}</strong>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 border-t border-[var(--glass-divider)] pt-4">
+            <div className="mb-2 flex justify-between text-xs"><span className="text-ink-600">Feedback completion</span><strong className="font-medium text-ink-950">84%</strong></div>
+            <ProgressBar value={84} />
+          </div>
+        </Panel>
+      </div>
+
+      <SectionLabel>{isAdmin ? 'Budget and upcoming events' : 'Upcoming events'}</SectionLabel>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {isAdmin && (
+          <Panel className="flex flex-col">
+            <PanelTitle title="Budget utilization" subtitle={`Annual budget ${peso(annual)}`} />
+            <strong className="text-[28px] font-medium leading-none tracking-[-0.6px] text-ink-950">{utilization}%</strong>
+            <div className="relative my-3 h-2 rounded-full bg-brand-900/[0.07]">
+              <div className="absolute inset-y-0 left-0 rounded-full bg-brand-200" style={{ width: `${Math.min(100, (budget.estimated / annual) * 100)}%` }} />
+              <div className="absolute inset-y-0 left-0 rounded-full bg-brand-600" style={{ width: `${Math.min(100, (budget.actual / annual) * 100)}%` }} />
+            </div>
+            <dl className="space-y-1.5 text-xs">
+              {[['Actual', peso(budget.actual)], ['Estimated', peso(budget.estimated)], ['Remaining', peso(budget.remaining)]].map(([k, v]) => (
+                <div key={k} className="flex justify-between"><dt className="text-ink-500">{k}</dt><dd className="text-ink-950">{v}</dd></div>
+              ))}
+            </dl>
+            <Button variant="secondary" size="sm" className="mt-auto self-start" onClick={() => navigate('/budget')}>Review budget</Button>
+          </Panel>
+        )}
+        {events.map((e) => (
+          <Panel key={e.key} className="flex flex-col">
+            <span className="mb-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-100 text-brand-700"><Icon name="calendar" size={18} /></span>
+            <strong className="text-[13px] font-medium leading-snug text-ink-950">{e.title}</strong>
+            <p className="mt-1 text-xs text-ink-500">{e.type} · {e.venue}</p>
+            <div className="mt-3 flex items-center justify-between">
+              <Badge value={e.status} />
+              <Button variant="secondary" size="sm" onClick={() => navigate(e.activityId ? `/activities/${e.activityId}` : '/calendar')}>Open</Button>
+            </div>
+          </Panel>
+        ))}
       </div>
     </PageWrapper>
   );
