@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { PlatformContext } from './platformContext';
-import { SEED_ACCOUNTS, SEED_AGENCIES, SEED_APPLICATIONS, SEED_AUDIT, SEED_SETTINGS } from '../data/platformData';
+import { SEED_ACCOUNTS, SEED_AGENCIES, SEED_APPLICATIONS, SEED_AUDIT, SEED_SETTINGS, contactName } from '../data/platformData';
 
 const OPEN = ['Pending', 'Under review', 'Needs info'];
 const pad = (n) => String(n).padStart(2, '0');
@@ -26,9 +26,9 @@ export function PlatformProvider({ children, notify }) {
     if (status === 'Approved') {
       setAgencies((list) => [
         ...list,
-        { id: app.acronym, name: app.agency, type: app.type, region: app.region, created: stamp().slice(0, 10), admin: app.contact, usage: 'New workspace', suspended: false },
+        { id: app.acronym, name: app.agency, type: app.type, region: app.region, created: stamp().slice(0, 10), admin: contactName(app), usage: 'New workspace', suspended: false },
       ]);
-      notify?.(`Approved. Invitation email sent to ${app.contact}`);
+      notify?.(`Approved. Invitation email sent to ${contactName(app)}`);
     } else if (status === 'Rejected') {
       notify?.('Rejected. The reason is included in the applicant email');
     } else {

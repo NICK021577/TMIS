@@ -5,7 +5,7 @@ import { ACTIVITY_TYPES, BUDGET_CATEGORIES, FUNDING, peso } from '../../data/moc
 import { ROLE_OPTIONS } from '../../data/workspaceData';
 import { estOf, formatRange } from '../../lib/budgetModel';
 
-const STEPS = ['Basics', 'Plan & agencies', 'Budget estimate', 'Required documents', 'Review'];
+const STEPS = ['Basics', 'Plan & agencies', 'Allocated budget', 'Required documents', 'Review'];
 const REQUIRED_DOCS = ['Proposal', 'Approval memo', 'Program of activities', 'Budget breakdown'];
 
 const empty = {
@@ -43,14 +43,23 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
     participants: 0, capacity: Number(f.target) || 0, tenant: 'PRRI',
   });
 
+  const lines = (t) => t.split(/\n|;/).map((x) => x.trim()).filter(Boolean);
+  const detailsOf = () => ({
+    description: f.description.trim(), funding: f.funding, lead: f.lead, topics: f.topics.trim(), documentation: '', programFlow: null,
+    agencies: `${f.agencies.length} partner organization${f.agencies.length === 1 ? '' : 's'}`,
+    audience: f.openToAll || !f.audience.length ? 'participants' : f.audience.join(', '),
+    objectives: lines(f.objectives), outcomes: lines(f.outcomes),
+  });
+
   const saveDraft = () => {
     if (!f.title.trim()) return;
-    createActivity(build('Draft'), f.budget.map((b) => ({ ...b, funding: f.funding })));
+    createActivity(build('Draft'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf());
     notify?.('Draft saved');
+    onCreated?.();
     onClose();
   };
   const create = () => {
-    createActivity(build('Upcoming'), f.budget.map((b) => ({ ...b, funding: f.funding })));
+    createActivity(build('Upcoming'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf());
     notify?.(`“${f.title.trim()}” created and added to the calendar`);
     onCreated?.();
     onClose();
@@ -161,7 +170,7 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
 
       {step === 2 && (
         <div className="space-y-4">
-          <Callout tone="info" icon="award">Remaining annual budget: <strong>{peso(remaining)}</strong>. A budget estimate is required to continue.</Callout>
+          <Callout tone="info" icon="award">Remaining annual budget: <strong>{peso(remaining)}</strong>. An allocated budget is required to continue.</Callout>
           <div className="grid grid-cols-[130px_1fr_70px_110px_auto] gap-2">
             <select className={inputCls} value={line.category} aria-label="Category" onChange={(e) => setLine({ ...line, category: e.target.value })}>{BUDGET_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select>
             <input className={inputCls} placeholder="Item" aria-label="Item" value={line.item} onChange={(e) => setLine({ ...line, item: e.target.value })} />
@@ -180,16 +189,16 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
                       <td className="px-4 py-2.5"><Badge value={b.category} tone="muted" variant="pill" /></td>
                       <td className="px-2 py-2.5 text-ink-950">{b.item}</td>
                       <td className="px-2 py-2.5 text-ink-500">{b.qty} × {peso(b.unit)}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums">{peso(estOf(b))}</td>
-                      <td className="px-3 py-2.5 text-right"><button type="button" aria-label="Remove" onClick={() => set({ budget: f.budget.filter((_, j) => j !== i) })} className="text-ink-400 hover:text-danger"><Icon name="trash" size={14} /></button></td>
+                      <td className="px-2 py-2.5 tabular-nums">{peso(estOf(b))}</td>
+                      <td className="px-3 py-2.5"><button type="button" aria-label="Remove" onClick={() => set({ budget: f.budget.filter((_, j) => j !== i) })} className="text-ink-400 hover:text-danger"><Icon name="trash" size={14} /></button></td>
                     </tr>
                   ))}
-                  <tr className="bg-white/40 font-medium text-ink-950"><td className="px-4 py-2.5" colSpan={3}>Estimated total</td><td className="px-2 py-2.5 text-right tabular-nums">{peso(total)}</td><td /></tr>
+                  <tr className="bg-white/40 font-medium text-ink-950"><td className="px-4 py-2.5" colSpan={3}>Allocated total</td><td className="px-2 py-2.5 tabular-nums">{peso(total)}</td><td /></tr>
                 </tbody>
               </table>
             </div>
           )}
-          {short > 0 && <Callout tone="warn">This estimate is <strong>{peso(short)}</strong> above the remaining annual budget. This is a warning only; you can still continue.</Callout>}
+          {short > 0 && <Callout tone="warn">This allocation is <strong>{peso(short)}</strong> above the remaining annual budget. This is a warning only; you can still continue.</Callout>}
         </div>
       )}
 
@@ -226,7 +235,7 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
             ))}
           </dl>
           {short > 0
-            ? <Callout tone="warn">The estimate is over the remaining annual budget by <strong>{peso(short)}</strong>.</Callout>
+            ? <Callout tone="warn">The allocated budget is over the remaining annual budget by <strong>{peso(short)}</strong>.</Callout>
             : <Callout tone="ok" icon="check">This activity is within the remaining annual budget.</Callout>}
           <p className="text-xs text-ink-500">Creating the activity adds exactly one event to the annual calendar. It is unpublished by default.</p>
         </div>

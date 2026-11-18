@@ -1,3 +1,4 @@
+import { useConfirm } from '../modals/confirmContext';
 import { useState } from 'react';
 import { Badge, Button, DataTable, Field, Panel, PanelTitle, inputCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
@@ -21,7 +22,9 @@ export default function CategoriesTab({ readOnly, notify }) {
     if (draft.trim()) setCategories((l) => l.map((x) => (x.id === c.id ? { ...x, name: draft.trim() } : x)));
     setEditing(null);
   };
-  const toggle = (c) => {
+  const confirm = useConfirm();
+  const toggle = async (c) => {
+    if (!c.archived && !(await confirm({ tone: 'warn', title: `Archive “${c.name}”?`, message: 'It will no longer be offered when adding participants.', detail: 'Existing participants keep this category. You can restore it later.', confirmLabel: 'Archive' }))) return;
     setCategories((l) => l.map((x) => (x.id === c.id ? { ...x, archived: !x.archived } : x)));
     notify?.(c.archived ? `“${c.name}” restored` : `“${c.name}” archived. Existing participants are kept`);
   };
@@ -38,7 +41,7 @@ export default function CategoriesTab({ readOnly, notify }) {
     {
       key: 'act', label: '', className: 'text-right',
       render: (c) => !readOnly && (
-        <div className="flex justify-end gap-1">
+        <div className="flex justify-start gap-1">
           <Button variant="ghost" size="sm" onClick={() => { setEditing(c.id); setDraft(c.name); }}>Rename</Button>
           <Button variant="ghost" size="sm" onClick={() => toggle(c)}>{c.archived ? 'Restore' : 'Archive'}</Button>
         </div>

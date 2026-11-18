@@ -1,3 +1,4 @@
+import { useConfirm } from '../modals/confirmContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { usePlatform } from '../../hooks/usePlatform';
@@ -19,6 +20,7 @@ const GROUPS = [
 
 export function SuperAdminSidebar({ open = false, onClose }) {
   const { logout } = useAuth();
+  const confirm = useConfirm();
   const { openApplications } = usePlatform();
   const navigate = useNavigate();
 
@@ -28,7 +30,7 @@ export function SuperAdminSidebar({ open = false, onClose }) {
       onClose={onClose}
       label="Platform"
       brand={<Logo size={36} tagline="Platform console" />}
-      footer={<NavButton icon="logout" danger onClick={() => { logout(); navigate('/'); }}>Sign out</NavButton>}
+      footer={<NavButton icon="logout" danger onClick={async () => { if (await confirm({ tone: 'signout', title: 'Sign out of UniFyle?', message: 'You will need to sign in again to continue.', confirmLabel: 'Sign out' })) { logout(); navigate('/'); } }}>Sign out</NavButton>}
     >
       {GROUPS.map((g) => (
         <div key={g.label} className="space-y-0.5">

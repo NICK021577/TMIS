@@ -1,7 +1,8 @@
+import { useConfirm } from '../../modals/confirmContext';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { Badge, Button, Callout, DataTable, Drawer, Field, IconButton, KeyValue, Modal, Panel, Select, Switch, inputCls } from '../../ui';
+import { Badge, Button, Callout, Drawer, Field, IconButton, KeyValue, Modal, Panel, Select, Switch, inputCls } from '../../ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
 import CreateWizard from '../../activity/CreateWizard';
@@ -43,6 +44,7 @@ function PlanModal({ onClose }) {
 function EventDrawer({ event, events, isAdmin, onClose, onTurnInto }) {
   const navigate = useNavigate();
   const { removePlan, setEventPublished, notify } = useStore();
+  const confirm = useConfirm();
   const over = overlapsFor(event, events);
   const real = !!event.activityId;
   const isDraft = event.status === 'Planned' && real;
@@ -56,8 +58,8 @@ function EventDrawer({ event, events, isAdmin, onClose, onTurnInto }) {
         <Button onClick={() => navigate(`/activities/${event.activityId}`)}>Open activity</Button>
       ) : isAdmin ? (
         <>
-          <Button variant="secondary" onClick={() => { removePlan(event.planId); notify?.('Planned event removed'); onClose(); }}>Remove</Button>
-          <Button onClick={() => onTurnInto(event)}>Turn into activity</Button>
+          <Button variant="secondary" onClick={async () => { if (await confirm({ tone: 'danger', title: 'Remove this planned event?', message: `“${event.title}” will be taken off the calendar and out of Activities drafts.`, confirmLabel: 'Remove event' })) { removePlan(event.planId); notify?.('Planned event removed'); onClose(); } }}>Remove</Button>
+          <Button onClick={() => onTurnInto(event)}>Complete activity form</Button>
         </>
       ) : null}
     >
@@ -65,7 +67,7 @@ function EventDrawer({ event, events, isAdmin, onClose, onTurnInto }) {
         ['Status', <Badge key="s" value={event.status} />],
         ['Venue', event.venue],
         ['Funding source', event.funding],
-        ['Estimated budget', event.estimated ? peso(event.estimated) : '—'],
+        ['Allocated budget', event.estimated ? peso(event.estimated) : '—'],
       ]} />
       {over.length > 0 && (
         <Callout tone="warn" icon="alert">
@@ -82,6 +84,7 @@ function EventDrawer({ event, events, isAdmin, onClose, onTurnInto }) {
         <Switch checked={event.published} onChange={(v) => setEventPublished(event.key, v)} label="Publish to participants" />
       </div>
       {isDraft && <p className="text-xs text-ink-500">Draft activities show as Planned and are never published.</p>}
+      {!real && <p className="text-xs text-ink-500">This planned event is also listed under Activities, in Draft. Open it there to fill in the full activity form.</p>}
     </Drawer>
   );
 }
@@ -92,48 +95,34 @@ export default function Calendar() {
   const isAdmin = role === 'Agency Administrator' || role === 'Super Admin';
 
   const [month, setMonth] = useState(5);
-  const [view, setView] = useState('month');
   const [type, setType] = useState('All types');
   const [status, setStatus] = useState('All statuses');
   const [funding, setFunding] = useState('All funding');
   const [openKey, setOpenKey] = useState(null);
   const [planning, setPlanning] = useState(false);
   const [wizard, setWizard] = useState(null);
+  const [scope, setScope] = useState('month');
 
   const all = useMemo(() => buildEvents(activities, plans, items, published), [activities, plans, items, published]);
   const events = all.filter((e) => (type === 'All types' || e.type === type) && (status === 'All statuses' || e.status === status) && (funding === 'All funding' || e.funding === funding));
-  const countFor = (m) => events.filter((e) => Number(e.start.slice(5, 7)) - 1 === m).length;
+  const monthEvents = events.filter((e) => Number(e.start.slice(5, 7)) - 1 === month);
   const open = all.find((e) => e.key === openKey);
+  const listEvents = scope === 'year' ? events : monthEvents;
 
   const first = new Date(YEAR, month, 1).getDay();
   const days = new Date(YEAR, month + 1, 0).getDate();
   const cells = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   const eventsOn = (d) => events.filter((e) => iso(month, d) >= e.start && iso(month, d) <= e.end);
-  const committed = events.filter((e) => Number(e.start.slice(5, 7)) - 1 === month).reduce((s, e) => s + e.estimated, 0);
+  const committed = monthEvents.reduce((s, e) => s + e.estimated, 0);
   const overlapDays = cells.filter((d) => d && eventsOn(d).length > 1).length;
-
-  const listColumns = [
-    { key: 'title', label: 'Event', render: (e) => <div className="flex items-center gap-3"><i className={`h-8 w-1 rounded-full ${colorOf(e.type).dot}`} /><div><strong className="block font-medium text-ink-950">{e.title}</strong><span className="text-xs text-ink-500">{e.type} · {e.venue}</span></div></div> },
-    { key: 'dates', label: 'Dates', render: (e) => <span className="whitespace-nowrap">{formatRange(e.start, e.end)}</span> },
-    { key: 'status', label: 'Status', render: (e) => <Badge value={e.status} /> },
-    { key: 'funding', label: 'Funding' },
-    { key: 'est', label: 'Estimated', className: 'text-right', render: (e) => (e.estimated ? peso(e.estimated) : '—') },
-    { key: 'pub', label: 'Published', render: (e) => <Badge value={e.published ? 'Published' : 'Unpublished'} /> },
-  ];
 
   return (
     <PageWrapper>
-      <PageHeader title="Annual calendar" subtitle="PRRI’s year at a glance. Planned entries become full activities through the creation wizard.">
-        <div className="glass-inset inline-flex rounded-full p-0.5">
-          {['month', 'list'].map((v) => (
-            <button key={v} onClick={() => setView(v)} aria-pressed={view === v}
-              className={`rounded-full px-4 py-1.5 text-xs capitalize transition-colors ${view === v ? 'bg-white text-ink-950 shadow-sm' : 'text-ink-500 hover:text-ink-950'}`}>{v}</button>
-          ))}
-        </div>
+      <PageHeader title="Annual calendar" subtitle="PRRI’s year at a glance. Planned entries are listed as drafts under Activities, ready to complete.">
         {isAdmin && <Button icon="plus" onClick={() => setPlanning(true)}>Plan event</Button>}
       </PageHeader>
 
-      <Panel className="mb-4 flex flex-wrap items-center gap-3 !p-3">
+      <Panel className="mb-4 flex flex-wrap items-center gap-3 !px-5 !py-3">
         <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type"><option>All types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option>All statuses</option>{['Planned', 'Upcoming', 'Ongoing', 'Completed'].map((t) => <option key={t}>{t}</option>)}</Select>
         <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option>All funding</option>{FUNDING.map((t) => <option key={t}>{t}</option>)}</Select>
@@ -142,32 +131,68 @@ export default function Calendar() {
         </ul>
       </Panel>
 
-      {/* Year strip */}
-      <div className="mb-4 grid grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-12">
-        {MONTH_NAMES.map((m, i) => {
-          const n = countFor(i);
-          return (
-            <button key={m} onClick={() => setMonth(i)} aria-pressed={month === i}
-              className={`rounded-2xl px-3 py-2.5 text-left transition-all ${month === i ? 'bg-white shadow-[0_4px_14px_rgba(70,100,200,0.15)] ring-1 ring-white' : 'glass-inset hover:bg-white/70'}`}>
-              <strong className="block text-xs font-medium text-ink-950">{m.slice(0, 3)}</strong>
-              <span className={`text-[11px] ${n ? 'text-ink-500' : 'text-amber-600'}`}>{n ? `${n} event${n > 1 ? 's' : ''}` : 'Nothing scheduled'}</span>
-            </button>
-          );
-        })}
-      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
+        {/* Left, smaller: events list. Matches the height of the calendar beside it and scrolls inside. */}
+        <div className="relative min-h-[360px]">
+          <Panel pad={false} className="flex flex-col overflow-hidden xl:absolute xl:inset-0">
+            <div className="flex-shrink-0 p-5 pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-medium text-ink-950">{scope === 'year' ? `All events ${YEAR}` : `${MONTH_NAMES[month]} events`}</h2>
+                  <p className="mt-0.5 text-xs text-ink-500">
+                    {listEvents.length ? `${listEvents.length} event${listEvents.length > 1 ? 's' : ''} · ${peso(listEvents.reduce((s, e) => s + e.estimated, 0))} allocated` : 'Nothing scheduled'}
+                  </p>
+                </div>
+              </div>
+              <div role="tablist" aria-label="Events shown" className="glass-inset mt-3 inline-flex rounded-full p-0.5">
+                {[['month', MONTH_NAMES[month]], ['year', 'Whole year']].map(([id, label]) => (
+                  <button key={id} role="tab" aria-selected={scope === id} onClick={() => setScope(id)}
+                    className={`rounded-full px-3.5 py-1.5 text-xs transition-colors ${scope === id ? 'bg-white font-medium text-ink-950 shadow-sm' : 'text-ink-500 hover:text-ink-950'}`}>{label}</button>
+                ))}
+              </div>
+            </div>
 
-      {view === 'month' ? (
+            {listEvents.length ? (
+              <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+                {listEvents.map((e, i) => {
+                  const m = Number(e.start.slice(5, 7)) - 1;
+                  const newMonth = scope === 'year' && (i === 0 || Number(listEvents[i - 1].start.slice(5, 7)) - 1 !== m);
+                  return (
+                    <li key={e.key}>
+                      {newMonth && <p className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wide text-ink-500">{MONTH_NAMES[m]}</p>}
+                      <button onClick={() => { setOpenKey(e.key); if (scope === 'year') setMonth(m); }} className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/60">
+                        <span className="glass-inset grid h-11 w-11 flex-shrink-0 place-content-center rounded-xl text-center">
+                          <strong className="block text-[15px] font-medium leading-none text-brand-800">{Number(e.start.slice(8))}</strong>
+                          <span className="mt-0.5 block text-[9px] uppercase text-ink-500">{MONTH_NAMES[m].slice(0, 3)}</span>
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <strong className="block text-[13px] font-medium leading-snug text-ink-950">{e.title}</strong>
+                          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-500"><i className={`h-1.5 w-1.5 rounded-full ${colorOf(e.type).dot}`} />{e.type}</span>
+                          <span className="mt-0.5 block text-xs text-ink-500">{formatRange(e.start, e.end)}</span>
+                        </span>
+                        <Badge value={e.status} className="mt-0.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="px-5 pb-6 text-[13px] text-ink-500">
+                <Callout tone="warn">Nothing is scheduled in {MONTH_NAMES[month]}.{isAdmin && ' Use Plan event to reserve dates.'}</Callout>
+              </div>
+            )}
+          </Panel>
+        </div>
+
+        {/* Right, bigger: month grid */}
         <Panel>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <IconButton icon="back" label="Previous month" size={32} onClick={() => setMonth((m) => (m + 11) % 12)} />
-              <h2 className="text-[15px] font-medium text-ink-950">{MONTH_NAMES[month]} {YEAR}</h2>
+              <h2 className="min-w-[132px] text-center text-[15px] font-medium text-ink-950">{MONTH_NAMES[month]} {YEAR}</h2>
               <IconButton icon="arrow" label="Next month" size={32} onClick={() => setMonth((m) => (m + 1) % 12)} />
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-ink-500">
-              <span>Budget committed this month: <strong className="font-medium text-ink-950">{peso(committed)}</strong></span>
-              {overlapDays > 0 && <Badge value={`${overlapDays} day${overlapDays > 1 ? 's' : ''} with overlapping events`} tone="warn" variant="pill" />}
-            </div>
+            {overlapDays > 0 && <Badge value={`${overlapDays} day${overlapDays > 1 ? 's' : ''} with overlapping events`} tone="warn" variant="pill" />}
           </div>
 
           <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] text-ink-500">{DOW.map((d) => <span key={d} className="py-1">{d}</span>)}</div>
@@ -179,7 +204,7 @@ export default function Calendar() {
               const overlap = ev.length > 1;
               return (
                 <div key={d} title={overlap ? `Overlap: ${ev.map((e) => e.title).join(', ')}` : undefined}
-                  className={`min-h-[84px] rounded-2xl p-1.5 text-left ${overlap ? 'bg-amber-100/60 ring-1 ring-amber-200' : 'glass-inset'} ${today ? '!ring-2 !ring-brand-500' : ''}`}>
+                  className={`min-h-[96px] rounded-2xl p-1.5 text-left ${overlap ? 'bg-amber-100/60 ring-1 ring-amber-200' : 'glass-inset'} ${today ? '!ring-2 !ring-brand-500' : ''}`}>
                   <div className="flex items-center justify-between">
                     <span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${today ? 'bg-brand-600 text-white' : 'text-ink-800'}`}>{d}</span>
                     {overlap && <span className="text-[10px] text-amber-700">Overlap</span>}
@@ -194,15 +219,8 @@ export default function Calendar() {
               );
             })}
           </div>
-          {countFor(month) === 0 && (
-            <div className="mt-4"><Callout tone="warn">Nothing is scheduled in {MONTH_NAMES[month]}.{isAdmin && ' Use Plan event to reserve dates.'}</Callout></div>
-          )}
         </Panel>
-      ) : (
-        <Panel pad={false} className="overflow-hidden">
-          <DataTable columns={listColumns} rows={events.map((e) => ({ ...e, id: e.key }))} onRowClick={(e) => setOpenKey(e.key)} empty="No events match these filters." />
-        </Panel>
-      )}
+      </div>
 
       {open && <EventDrawer key={open.key} event={open} events={all} isAdmin={isAdmin} onClose={() => setOpenKey(null)}
         onTurnInto={(e) => { setWizard({ planId: e.planId, title: e.title, type: e.type, start: e.start, end: e.end, venue: e.venue, funding: e.funding }); setOpenKey(null); }} />}

@@ -1,3 +1,4 @@
+import { useConfirm } from '../../modals/confirmContext';
 import { useState } from 'react';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
 import { Avatar, Badge, Button, Cell, DataTable, Panel, SearchInput, Select, Tabs } from '../../ui';
@@ -20,6 +21,16 @@ function Admins() {
 
 function Accounts() {
   const { accounts, toggleAccount, resetPassword } = usePlatform();
+  const confirm = useConfirm();
+  const onToggle = async (u) => {
+    const ok = await (u.status === 'Suspended'
+      ? confirm({ tone: 'info', title: `Reactivate ${u.name}?`, message: 'They will be able to sign in again.', confirmLabel: 'Reactivate' })
+      : confirm({ tone: 'danger', title: `Suspend ${u.name}?`, message: 'They will be signed out and blocked from signing in until you reactivate the account.', detail: 'Their records are kept.', confirmLabel: 'Suspend account' }));
+    if (ok) toggleAccount(u);
+  };
+  const onReset = async (u) => {
+    if (await confirm({ tone: 'warn', title: 'Send a password reset?', message: `A reset link will be emailed to ${u.email}.`, confirmLabel: 'Send reset email' })) resetPassword(u);
+  };
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('All roles');
 
@@ -42,9 +53,9 @@ function Accounts() {
     {
       key: 'actions', label: '', className: 'text-right',
       render: (u) => (
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="secondary" onClick={() => resetPassword(u)}>Reset password</Button>
-          <Button size="sm" variant={u.status === 'Suspended' ? 'primary' : 'secondary'} onClick={() => toggleAccount(u)}>
+        <div className="flex justify-start gap-2">
+          <Button size="sm" variant="secondary" onClick={() => onReset(u)}>Reset password</Button>
+          <Button size="sm" variant={u.status === 'Suspended' ? 'primary' : 'secondary'} onClick={() => onToggle(u)}>
             {u.status === 'Suspended' ? 'Reactivate' : 'Suspend'}
           </Button>
         </div>

@@ -1,71 +1,89 @@
+import { useState } from 'react';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { Button, Metric, Panel, PanelTitle, ProgressBar, Select } from '../../ui';
-import { ACTIVITIES, EVALUATION, PARTICIPATION_BY_TYPE, REPORT_METRICS } from '../../../data/mockData';
+import { Button, Donut, Legend, MeterRow, Metric, Panel, PanelTitle, Select } from '../../ui';
+import { useStore } from '../../../hooks/useStore';
+import { EVALUATION, PARTICIPATION_BY_TYPE, REPORT_METRICS } from '../../../data/mockData';
+import { downloadFile, makePdf } from '../../../lib/download';
 
-function Donut({ value }) {
-  const deg = (value / 100) * 360;
-  return (
-    <div
-      className="relative mx-auto grid h-40 w-40 place-items-center rounded-full"
-      style={{ background: `conic-gradient(#2563d9 0deg ${deg}deg, rgba(29,79,192,0.12) ${deg}deg 360deg)` }}
-      role="img"
-      aria-label={`${value}% completed`}
-    >
-      <div className="grid h-[118px] w-[118px] place-items-center rounded-full bg-white/90 text-center shadow-[inset_0_1px_0_#fff]">
-        <div>
-          <strong className="block text-3xl font-medium leading-none tracking-[-1px] text-ink-950">{value}%</strong>
-          <span className="text-xs text-ink-500">completed</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+const IMPL = [
+  { label: 'Conducted', value: 19, color: 'var(--color-brand-600)' },
+  { label: 'Not yet conducted', value: 7, color: 'var(--color-brand-200)' },
+];
+const PERIODS = ['January – June 2025', 'Full year 2025'];
+const TYPE_MAP = { Training: 'Skills Training', Seminar: 'Seminar' };
+const DEFAULT = { activity: 'All activities', period: PERIODS[0], type: 'All activity types' };
 
 export default function Reports({ notify }) {
+  const { activities } = useStore();
+  const [draft, setDraft] = useState(DEFAULT);
+  const [applied, setApplied] = useState(DEFAULT);
+  const filtered = applied.activity !== DEFAULT.activity || applied.type !== DEFAULT.type;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(applied);
+
+  // With no activity or type filter the agency-wide figures show; otherwise they come from the matching activities.
+  const matching = activities.filter((a) => (applied.activity === DEFAULT.activity || a.title === applied.activity) && (applied.type === DEFAULT.type || a.type === (TYPE_MAP[applied.type] ?? applied.type)));
+  const conducted = matching.filter((a) => a.status === 'Completed' || a.status === 'Ongoing');
+  const metrics = filtered
+    ? [
+        { label: 'Activities conducted', value: String(conducted.length), note: `${matching.length} matching the filters` },
+        { label: 'Total participants', value: String(matching.reduce((s, a) => s + a.participants, 0)), note: 'Registered in these activities' },
+        REPORT_METRICS[2], REPORT_METRICS[3],
+      ]
+    : REPORT_METRICS;
+  const byType = filtered && applied.type !== DEFAULT.type
+    ? PARTICIPATION_BY_TYPE.filter((r) => r.label.toLowerCase().startsWith(applied.type.toLowerCase().slice(0, 5)))
+    : PARTICIPATION_BY_TYPE;
+
+  const exportReport = () => {
+    downloadFile('Activity_Performance_Report.pdf', makePdf('Activity performance report', [
+      `Period: ${applied.period}`, `Activity: ${applied.activity}`, `Type: ${applied.type}`, '',
+      ...metrics.map((m) => `${m.label}: ${m.value} (${m.note})`), '',
+      'Participation by activity type:', ...byType.map((r) => `  ${r.label}: ${r.count} participants`), '',
+      `Evaluation score: ${EVALUATION.score} / 5.0 from ${EVALUATION.responses} responses`,
+    ]));
+    notify?.('Activity performance report downloaded as PDF');
+  };
+
   return (
     <PageWrapper>
-      <PageHeader
-        eyebrow="Workspace"
-        title="Reports & analytics"
-        subtitle="Measure implementation, participation, attendance, and training outcomes."
-      >
-        <Button icon="download" onClick={() => notify?.('Activity performance report exported as PDF')}>Export report</Button>
+      <PageHeader eyebrow="Workspace" title="Reports & analytics" subtitle="Measure implementation, participation, attendance, and training outcomes.">
+        <Button icon="download" onClick={exportReport}>Export report</Button>
       </PageHeader>
 
-      <Panel className="mb-5 flex flex-wrap items-center gap-3">
-        <Select aria-label="Activity" className="w-full sm:w-64">
+      <Panel className="mb-5 flex flex-wrap items-center gap-3 !px-5 !py-3">
+        <Select aria-label="Activity" className="w-full sm:w-64" value={draft.activity} onChange={(e) => setDraft({ ...draft, activity: e.target.value })}>
           <option>All activities</option>
-          {ACTIVITIES.map((a) => <option key={a.id}>{a.title}</option>)}
+          {activities.map((a) => <option key={a.id}>{a.title}</option>)}
         </Select>
-        <Select aria-label="Period"><option>January – June 2025</option><option>Full year 2025</option></Select>
-        <Select aria-label="Type"><option>All activity types</option><option>Training</option><option>Seminar</option></Select>
-        <Button variant="secondary" className="sm:ml-auto">Apply filters</Button>
+        <Select aria-label="Period" value={draft.period} onChange={(e) => setDraft({ ...draft, period: e.target.value })}>{PERIODS.map((p) => <option key={p}>{p}</option>)}</Select>
+        <Select aria-label="Type" value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })}><option>All activity types</option><option>Training</option><option>Seminar</option></Select>
+        <div className="flex gap-2 sm:ml-auto">
+          {(filtered || dirty) && <Button variant="ghost" onClick={() => { setDraft(DEFAULT); setApplied(DEFAULT); }}>Reset</Button>}
+          <Button variant="secondary" disabled={!dirty} onClick={() => { setApplied(draft); notify?.('Filters applied'); }}>Apply filters</Button>
+        </div>
       </Panel>
 
       <div className="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {REPORT_METRICS.map((m) => <Metric key={m.label} label={m.label} value={m.value} note={m.note} />)}
+        {metrics.map((m) => <Metric key={m.label} label={m.label} value={m.value} note={m.note} />)}
       </div>
 
       <div className="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <Panel>
-          <PanelTitle title="Participation by activity type" subtitle="Unique participants, January–June 2025" />
+          <PanelTitle title="Participation by activity type" subtitle={`Unique participants, ${applied.period}`} />
           <ul className="space-y-4">
-            {PARTICIPATION_BY_TYPE.map((r) => (
-              <li key={r.label} className="grid grid-cols-[130px_1fr_44px] items-center gap-3 text-[13px]">
-                <span className="text-ink-600">{r.label}</span>
-                <ProgressBar value={r.pct} className="!h-2.5" />
-                <strong className="text-right text-ink-950">{r.count}</strong>
-              </li>
-            ))}
+            {byType.map((r) => <MeterRow key={r.label} label={r.label} value={r.pct} display={r.count} />)}
+            {!byType.length && <li className="text-[13px] text-ink-500">No participation recorded for this type.</li>}
           </ul>
         </Panel>
 
         <Panel>
           <PanelTitle title="Planned vs. conducted" subtitle="Annual implementation progress" />
-          <Donut value={73} />
-          <div className="mt-5 flex justify-center gap-6 text-[13px]">
-            <span className="flex items-center gap-2 text-ink-600"><i className="h-2 w-2 rounded-full bg-brand-900/20" />Planned <strong className="text-ink-950">26</strong></span>
-            <span className="flex items-center gap-2 text-ink-600"><i className="h-2 w-2 rounded-full bg-brand-600" />Conducted <strong className="text-ink-950">19</strong></span>
+          <div className="flex flex-col items-center gap-5 2xl:flex-row">
+            <Donut data={IMPL} size={170} thickness={24} label="19 of 26 activities conducted">
+              <strong className="text-[26px] font-medium leading-none tracking-[-0.8px] text-ink-950">73%</strong>
+              <small className="mt-1 text-[11px] text-ink-500">conducted</small>
+            </Donut>
+            <div className="w-full min-w-0 flex-1"><Legend data={IMPL} /></div>
           </div>
         </Panel>
       </div>
@@ -79,13 +97,7 @@ export default function Reports({ notify }) {
             <small className="mt-1 block text-xs text-ink-500">Based on {EVALUATION.responses} responses</small>
           </div>
           <ul className="space-y-4">
-            {EVALUATION.rows.map((r) => (
-              <li key={r.label} className="grid grid-cols-[minmax(130px,220px)_1fr_44px] items-center gap-3 text-[13px]">
-                <span className="text-ink-600">{r.label}</span>
-                <ProgressBar value={r.value} className="!h-2.5" />
-                <strong className="text-right text-ink-950">{r.value}%</strong>
-              </li>
-            ))}
+            {EVALUATION.rows.map((r) => <MeterRow key={r.label} label={r.label} value={r.value} labelWidth={200} />)}
           </ul>
         </div>
       </Panel>

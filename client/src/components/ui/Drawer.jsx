@@ -5,7 +5,7 @@ import { Icon } from './Icon';
  * Drawer — right-side glass panel for review / detail / create flows.
  * Closes on Esc or backdrop click.
  */
-export function Drawer({ title, subtitle, onClose, children, footer }) {
+export function Drawer({ title, subtitle, onClose, children, footer, width = 460 }) {
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -19,7 +19,8 @@ export function Drawer({ title, subtitle, onClose, children, footer }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="glass-strong relative flex h-full w-full max-w-[460px] animate-fade-in flex-col !rounded-none sm:m-3 sm:h-[calc(100%-1.5rem)] sm:!rounded-[22px]"
+        style={{ maxWidth: width }}
+        className="glass-strong relative flex h-full w-full animate-fade-in flex-col !rounded-none sm:m-3 sm:h-[calc(100%-1.5rem)] sm:!rounded-[22px]"
       >
         <header className="flex items-start justify-between gap-4 border-b border-[var(--glass-divider)] px-6 py-5">
           <div className="min-w-0">

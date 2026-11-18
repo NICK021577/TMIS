@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AgencyMark, Button, Callout, Field, Panel, PanelTitle, inputCls, textareaCls } from '../ui';
+import { AgencyMark, Callout, Field, Panel, PanelTitle, inputCls, textareaCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
+import { SaveBar } from './SettingsKit';
 
 const MAX_SHORT = 10;
 
@@ -35,10 +36,8 @@ export default function ProfileTab({ readOnly, notify }) {
       </fieldset>
 
       {!readOnly && (
-        <div className="mt-5 flex items-center gap-3">
-          <Button disabled={!dirty || !f.name.trim() || !f.shortName.trim()} onClick={() => { setProfile(f); notify?.('Profile saved. The About page and the participant About tab are updated'); }}>Save profile</Button>
-          {dirty && <button className="text-xs text-ink-500 hover:text-ink-950" onClick={() => setF(profile)}>Discard changes</button>}
-        </div>
+        <SaveBar dirty={dirty} canSave={!!f.name.trim() && !!f.shortName.trim()} label="Save profile" onDiscard={() => setF(profile)}
+          onSave={() => { setProfile(f); notify?.('Profile saved. The About page and the participant About tab are updated'); }} />
       )}
     </Panel>
 

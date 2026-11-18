@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { Button, Cell, Icon, Metric, Panel, PanelTitle } from '../../ui';
+import { Button, Cell, HeroArt, Icon, Metric, Panel, PanelTitle } from '../../ui';
 import { usePlatform } from '../../../hooks/usePlatform';
 
 export default function PlatformDashboard() {
@@ -19,19 +19,29 @@ export default function PlatformDashboard() {
         <Button icon="plus" onClick={() => navigate('/platform/agencies')}>Create agency</Button>
       </PageHeader>
 
-      {oldest.length > 0 && (
-        <button
-          onClick={() => navigate('/platform/applications')}
-          className="banner-pastel mb-5 flex w-full items-center gap-4 rounded-[20px] p-5 text-left ring-1 ring-white/80 transition-transform hover:-translate-y-0.5"
-        >
-          <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-white/70 text-brand-700 ring-1 ring-white"><Icon name="file" size={20} /></span>
-          <span className="min-w-0 flex-1">
-            <strong className="block text-[15px] font-medium text-ink-950">{openApplications.length} agency {openApplications.length === 1 ? 'application needs' : 'applications need'} a decision</strong>
-            <span className="block truncate text-[13px] text-ink-600">Oldest: {oldest[0].agency} · submitted {oldest[0].submitted}</span>
-          </span>
-          <span className="hidden items-center gap-1.5 rounded-full bg-brand-600 px-4 py-2 text-[13px] font-medium text-white sm:inline-flex">Review <Icon name="arrow" size={14} /></span>
-        </button>
-      )}
+      <section className="banner-pastel relative mb-5 min-h-[220px] overflow-hidden rounded-[20px] p-6 ring-1 ring-white/80 sm:p-8">
+        <HeroArt />
+        <div className="relative flex h-full max-w-[520px] flex-col items-start">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-950 text-white"><Icon name="file" size={17} /></span>
+            <span className="text-[17px] font-medium text-ink-950">Applications</span>
+          </div>
+          {oldest.length > 0 ? (
+            <>
+              <p className="text-[13px] leading-relaxed text-ink-600">
+                <strong className="font-medium text-ink-950">{openApplications.length} agency {openApplications.length === 1 ? 'application needs' : 'applications need'} a decision.</strong>{' '}
+                The oldest is {oldest[0].agency}, submitted {oldest[0].submitted}. Check their documents, then approve, request more information or reject.
+              </p>
+              <Button className="mt-6" onClick={() => navigate('/platform/applications')}>Review applications</Button>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] leading-relaxed text-ink-600">You are all caught up. New agency sign-ups appear here as soon as they are submitted.</p>
+              <Button className="mt-6" variant="secondary" onClick={() => navigate('/platform/applications')}>View all applications</Button>
+            </>
+          )}
+        </div>
+      </section>
 
       <div className="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Metric label="Active agencies" value={agencies.length - suspended} note={`${agencies.length} total`} icon="building" />

@@ -1,3 +1,4 @@
+import { useConfirm } from '../../modals/confirmContext';
 import { useState } from 'react';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
 import { Badge, Button, Cell, DataTable, Drawer, KeyValue, Panel, SearchInput } from '../../ui';
@@ -45,13 +46,20 @@ function CreateDrawer({ onClose }) {
 
 function DetailDrawer({ agency, onClose }) {
   const { toggleSuspend } = usePlatform();
+  const confirm = useConfirm();
+  const onToggle = async () => {
+    const ok = await (agency.suspended
+      ? confirm({ tone: 'info', title: `Reactivate ${agency.name}?`, message: 'Everyone in this workspace will be able to sign in again.', confirmLabel: 'Reactivate agency' })
+      : confirm({ tone: 'danger', title: `Suspend ${agency.name}?`, message: 'Everyone in this workspace will be blocked from signing in until you reactivate it.', detail: 'Their data is kept and nothing is deleted.', confirmLabel: 'Suspend agency' }));
+    if (ok) { toggleSuspend(agency); onClose(); }
+  };
   return (
     <Drawer
       title={agency.name}
       subtitle={`${agency.type} · ${agency.region}`}
       onClose={onClose}
       footer={
-        <Button variant={agency.suspended ? 'primary' : 'danger'} onClick={() => { toggleSuspend(agency); onClose(); }}>
+        <Button variant={agency.suspended ? 'primary' : 'danger'} onClick={onToggle}>
           {agency.suspended ? 'Reactivate agency' : 'Suspend agency'}
         </Button>
       }

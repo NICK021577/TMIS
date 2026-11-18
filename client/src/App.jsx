@@ -10,6 +10,9 @@ import MainLayout from './components/layout/MainLayout';
 // Guest
 import Login from './components/pages/Guest/Login';
 
+// Public
+import AgencyPage from './components/pages/Public/AgencyPage';
+
 // Admin pages (stubbed — to be built out)
 import Dashboard    from './components/pages/Admin/Dashboard';
 import Calendar     from './components/pages/Admin/Calendar';
@@ -21,6 +24,7 @@ import Reports      from './components/pages/Admin/Reports';
 import Messaging    from './components/pages/Admin/Messaging';
 import AboutAgency  from './components/pages/Admin/AboutAgency';
 import Settings     from './components/pages/Admin/Settings';
+import GlobalSettings from './components/pages/Super_Admin/GlobalSettings';
 
 // Super Admin
 import SuperAdminLayout  from './components/layout/SuperAdminLayout';
@@ -28,21 +32,25 @@ import PlatformDashboard from './components/pages/Super_Admin/PlatformDashboard'
 import Applications      from './components/pages/Super_Admin/Applications';
 import Agencies          from './components/pages/Super_Admin/Agencies';
 import PlatformUsers     from './components/pages/Super_Admin/PlatformUsers';
-import GlobalSettings    from './components/pages/Super_Admin/GlobalSettings';
 import AuditLog          from './components/pages/Super_Admin/AuditLog';
 import RegisterAgency  from './components/pages/Super_Admin/RegisterAgency';
 
 // Not Found
 import NotFound from './components/pages/NotFound/NotFound';
+import { ConfirmProvider } from './components/modals/ConfirmProvider';
 
 function AppRoutes() {
   const { toast, notify } = useToast();
 
   return (
     <StoreProvider notify={notify}>
+     <ConfirmProvider>
       <Routes>
         {/* ── Guest ── */}
         <Route path="/"  element={<Login />} />
+
+        {/* ── Public agency page (outside the console) ── */}
+        <Route path="/a/:slug" element={<AgencyPage notify={notify} />} />
 
         {/* ── Admin (wrapped in layout) ── */}
         <Route element={<MainLayout />}>
@@ -75,6 +83,7 @@ function AppRoutes() {
       </Routes>
 
       <Toast message={toast} />
+     </ConfirmProvider>
     </StoreProvider>
   );
 }

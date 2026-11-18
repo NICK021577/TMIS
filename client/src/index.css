@@ -35,6 +35,10 @@
   --color-ink-600: #565f78;
   --color-ink-500: #6b7590;
   --color-ink-400: #8d95ab;
+  --color-ink-300: #c4cadb;
+  --color-ink-200: #e0e4ee;
+  --color-ink-100: #eef0f6;
+  --color-ink-700: #444d66;
 
   --color-line:    #e3e7f1;
   --color-canvas:  #eaf1fd;
@@ -257,3 +261,26 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(90, 110, 170, 0.22); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(90, 110, 170, 0.4); }
+
+/* Dropdowns: one custom chevron, inset from the edge so it never touches the pill border.
+   Unlayered on purpose, so it wins over the padding utilities on each select. */
+select.glass-input,
+select.glass-input:focus,
+select.select-arrow,
+select.select-arrow:focus {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7590' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 14px;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+select.glass-input.rounded-xl,
+select.select-arrow { background-position: right 0.9rem center; }
+
+/* Gentle floating motion for the logo in confirmation popups */
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.animate-bob { animation: bob 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-bob { animation: none; } }

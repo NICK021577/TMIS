@@ -1,6 +1,11 @@
-import { useLocation } from 'react-router-dom';
-import { Icon, Avatar, AgencyMark } from '../ui';
+import { useEffect, useState } from 'react';
+import { Link, matchPath, useLocation } from 'react-router-dom';
+import { Icon, AgencyMark } from '../ui';
+import AccountMenu from '../modals/AccountMenu';
+import NotificationsPopover from '../modals/NotificationsPopover';
+import SearchModal from '../modals/SearchModal';
 import { useAuth } from '../../context/AuthContext';
+import { useStore } from '../../hooks/useStore';
 import { HEADER_H } from './nav';
 
 const ROUTES = {
@@ -22,7 +27,17 @@ const ROUTES = {
 export function Topbar({ onMenu }) {
   const { user, switchRole } = useAuth();
   const { pathname } = useLocation();
+  const { activities } = useStore();
+  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearching(true); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [section, page] = ROUTES[pathname.split('/')[1]] ?? ['Workspace', ''];
+  // /activities/:id adds a third crumb with the activity's name
+  const detailId = matchPath('/activities/:id', pathname)?.params.id;
+  const detail = detailId ? activities.find((a) => String(a.id) === detailId)?.title ?? 'Activity' : null;
 
   return (
     <header className={`flex ${HEADER_H} flex-shrink-0 items-center gap-4 px-5 sm:px-8 lg:px-10`}>
@@ -34,17 +49,31 @@ export function Topbar({ onMenu }) {
         <AgencyMark size={30} className="lg:hidden" />
         <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-2 text-[13px] sm:flex">
           <span className="text-ink-400">{section}</span>
-          {page && <><Icon name="chevron" size={12} className="-rotate-90 text-ink-400" /><span className="truncate text-ink-800">{page}</span></>}
+          {page && (
+            <>
+              <Icon name="chevron" size={12} className="-rotate-90 text-ink-400" />
+              {detail
+                ? <Link to="/activities" className="text-ink-500 hover:text-ink-950">{page}</Link>
+                : <span className="truncate text-ink-800">{page}</span>}
+            </>
+          )}
+          {detail && (
+            <>
+              <Icon name="chevron" size={12} className="-rotate-90 flex-shrink-0 text-ink-400" />
+              <span className="max-w-[320px] truncate text-ink-800" title={detail} aria-current="page">{detail}</span>
+            </>
+          )}
         </nav>
       </div>
 
       {/* Right: everything else, grouped */}
       <div className="ml-auto flex items-center gap-3">
-        <label className="glass-input hidden h-10 w-[280px] items-center gap-2.5 rounded-full px-4 text-ink-500 md:flex">
+        <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="glass-input hidden h-10 w-[280px] items-center gap-2.5 rounded-full px-4 text-left text-ink-500 md:flex">
           <Icon name="search" size={15} />
-          <span className="sr-only">Search</span>
-          <input type="text" placeholder="Search…" className="min-w-0 flex-1 bg-transparent text-[13px] text-ink-950 outline-none placeholder:text-ink-400" />
-        </label>
+          <span className="flex-1 text-[13px] text-ink-400">Search…</span>
+          <kbd className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] text-ink-500 ring-1 ring-black/5">Ctrl K</kbd>
+        </button>
+        <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="grid h-10 w-10 place-items-center rounded-full text-ink-600 transition-colors hover:bg-white/60 md:hidden"><Icon name="search" size={18} /></button>
 
         <label className="hidden items-center gap-2 text-xs text-ink-500 xl:flex">
           View as
@@ -53,19 +82,10 @@ export function Topbar({ onMenu }) {
           </select>
         </label>
 
-        <button aria-label="Notifications" className="relative grid h-10 w-10 place-items-center rounded-full text-ink-600 transition-colors hover:bg-white/60">
-          <Icon name="bell" size={18} />
-          <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand-600 px-1 text-[9px] font-medium text-white">3</span>
-        </button>
-
-        <button className="flex items-center gap-3 rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-white/60">
-          <Avatar name={user?.name ?? 'User'} size="md" />
-          <span className="hidden text-left lg:block">
-            <strong className="block text-[13px] font-medium leading-none text-ink-950">{user?.name ?? 'User'}</strong>
-            <small className="mt-1 block text-[11px] leading-none text-ink-500">{user?.role ?? 'Agency'}</small>
-          </span>
-        </button>
+        <NotificationsPopover />
+        <AccountMenu links={[{ label: 'About agency', to: '/about', icon: 'building' }, { label: 'Agency settings', to: '/settings', icon: 'settings' }]} />
       </div>
+      {searching && <SearchModal onClose={() => setSearching(false)} />}
     </header>
   );
 }

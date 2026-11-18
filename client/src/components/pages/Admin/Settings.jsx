@@ -1,46 +1,41 @@
 import { useState } from 'react';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { Button, Tabs } from '../../ui';
 import { useAuth } from '../../../context/AuthContext';
+import { SettingsLayout } from '../../settings/SettingsKit';
 import ProfileTab from '../../settings/ProfileTab';
 import BrandingTab from '../../settings/BrandingTab';
 import CategoriesTab from '../../settings/CategoriesTab';
 import UsersTab from '../../settings/UsersTab';
 import RolesTab from '../../settings/RolesTab';
 
-const TABS = [
-  { id: 'profile',    label: 'Agency profile' },
-  { id: 'brand',      label: 'Branding' },
-  { id: 'categories', label: 'Participant categories' },
-  { id: 'users',      label: 'Users' },
-  { id: 'roles',      label: 'Roles & permissions' },
+const SECTIONS = [
+  { id: 'profile',    label: 'Agency profile', icon: 'building', desc: 'Name, mission and vision', Body: ProfileTab },
+  { id: 'brand',      label: 'Branding',       icon: 'sparkle',  desc: 'Logo and colors',          Body: BrandingTab },
+  { id: 'categories', label: 'Participant categories', icon: 'users', desc: 'Who participates',    Body: CategoriesTab },
+  { id: 'users',      label: 'Users',          icon: 'key',      desc: 'Accounts and invites',     Body: UsersTab },
+  { id: 'roles',      label: 'Roles & permissions', icon: 'shield', desc: 'Who can see what',     Body: RolesTab },
 ];
 
 /**
  * Agency settings (Agency Administrators only).
- * Tabs follow the draft: profile · branding · participant categories · users · roles.
+ * Only the agency profile and branding hold a draft, so only those two ask to be saved.
  */
 export default function Settings({ notify }) {
   const { role } = useAuth();
-  const [tab, setTab] = useState('profile');
+  const [id, setId] = useState('profile');
   const readOnly = !(role === 'Agency Administrator' || role === 'Super Admin');
+  const { Body } = SECTIONS.find((s) => s.id === id);
 
   return (
     <PageWrapper>
       <PageHeader
+        eyebrow="Administration"
         title="Agency settings"
         subtitle="Configure your agency profile, participant-facing identity, users, and permissions."
-      >
-        {!readOnly && <Button onClick={() => notify?.('All settings are saved')}>Save changes</Button>}
-      </PageHeader>
-
-      <Tabs tabs={TABS} value={tab} onChange={setTab} />
-
-      {tab === 'profile'    && <ProfileTab readOnly={readOnly} notify={notify} />}
-      {tab === 'brand'      && <BrandingTab readOnly={readOnly} notify={notify} />}
-      {tab === 'categories' && <CategoriesTab readOnly={readOnly} notify={notify} />}
-      {tab === 'users'      && <UsersTab readOnly={readOnly} notify={notify} />}
-      {tab === 'roles'      && <RolesTab readOnly={readOnly} notify={notify} />}
+      />
+      <SettingsLayout sections={SECTIONS} id={id} onChange={setId}>
+        <Body readOnly={readOnly} notify={notify} />
+      </SettingsLayout>
     </PageWrapper>
   );
 }

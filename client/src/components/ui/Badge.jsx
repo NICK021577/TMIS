@@ -19,7 +19,7 @@ const PILL = {
 
 const STATUS_TONE = {
   Ongoing: 'info', Upcoming: 'warn', Completed: 'ok', Draft: 'muted', Planned: 'muted',
-  Present: 'ok', 'Not Yet Checked In': 'muted', 'Pending Sync': 'warn',
+  Present: 'ok', 'Not Yet Checked In': 'muted', 'Pending Sync': 'warn', 'Pending sync': 'warn', 'Checked in': 'ok', 'Checked out': 'info', 'Not yet': 'muted',
   Active: 'ok', Invited: 'info', Pending: 'warn', 'Under review': 'info', 'Needs info': 'warn',
   Approved: 'ok', Rejected: 'bad', Revoked: 'bad', 'Used up': 'muted', Expired: 'muted', Suspended: 'bad',
   Assigned: 'ok', Confirmed: 'ok', Partial: 'warn', Submitted: 'ok', Released: 'ok', Eligible: 'info',

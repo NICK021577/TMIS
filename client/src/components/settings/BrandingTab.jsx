@@ -1,32 +1,12 @@
-import { useRef, useState } from 'react';
+import { useConfirm } from '../modals/confirmContext';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Callout, Field, Icon, Panel, PanelTitle, Switch, inputCls, textareaCls } from '../ui';
 import { AgencyMark } from '../ui/AgencyMark';
 import { useStore } from '../../hooks/useStore';
+import { SaveBar, same } from './SettingsKit';
 import {
   BRAND_PRESETS, SHADE_MIN, SHADE_MAX, SWATCHES, clampShade, hexToHsl, hslToHex, scale,
 } from '../../lib/brand';
-
-function SidebarPreview() {
-  const { profile } = useStore();
-  return (
-    <div>
-      <p className="mb-2 text-[11px] text-ink-400">SIDEBAR PREVIEW</p>
-      <div className="glass-inset rounded-2xl p-3">
-        <div className="mb-3 flex items-center gap-2.5 px-1">
-          <AgencyMark size={30} />
-          <div className="min-w-0 leading-tight">
-            <strong className="block truncate text-[13px] font-medium text-ink-950">{profile.shortName}</strong>
-            <small className="text-[10px] text-ink-500">Training and Extension</small>
-          </div>
-        </div>
-        {['Dashboard', 'Calendar', 'Activities'].map((n, i) => (
-          <div key={n} className={`rounded-lg px-3 py-2 text-xs ${i === 0 ? 'bg-white font-medium text-brand-700 shadow-sm' : 'text-ink-600'}`}>{n}</div>
-        ))}
-        <p className="mt-3 text-center text-[10px] text-ink-400">Powered by UniFyle</p>
-      </div>
-    </div>
-  );
-}
 
 function ParticipantPreview() {
   const { profile } = useStore();
@@ -59,10 +39,25 @@ function ParticipantPreview() {
 
 export default function BrandingTab({ readOnly, notify }) {
   const { profile, setProfile, brand, setBrand, logo, setLogo } = useStore();
+  const confirm = useConfirm();
   const fileRef = useRef(null);
   const [hex, setHex] = useState(() => hslToHex(brand.h, brand.s, clampShade(brand.l)));
   const [name, setName] = useState(profile.name);
   const [desc, setDesc] = useState(profile.description);
+
+  // Colors and the logo preview live, so the last saved state is kept to discard back to.
+  const [saved, setSaved] = useState({ brand, logo, name: profile.name, desc: profile.description });
+  const dirty = !same(brand, saved.brand) || logo !== saved.logo || name !== saved.name || desc !== saved.desc;
+  const latest = useRef({ dirty, saved, setBrand, setLogo });
+  latest.current = { dirty, saved, setBrand, setLogo };
+  const revert = () => { setBrand(saved.brand); setLogo(saved.logo); setName(saved.name); setDesc(saved.desc); setHex(hslToHex(saved.brand.h, saved.brand.s, clampShade(saved.brand.l))); };
+  const save = () => {
+    setProfile({ ...profile, name, description: desc });
+    setSaved({ brand, logo, name, desc });
+    notify?.('Branding saved. Your sidebar and participant pages are updated');
+  };
+  // Leaving the tab without saving drops the unsaved preview.
+  useEffect(() => () => { const l = latest.current; if (l.dirty) { l.setBrand(l.saved.brand); l.setLogo(l.saved.logo); } }, []);
 
   const applyBrand = (next) => {
     const merged = { ...brand, ...next };
@@ -80,7 +75,7 @@ export default function BrandingTab({ readOnly, notify }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setLogo(URL.createObjectURL(file));
-    notify?.('Logo updated and branded into the sidebar');
+    notify?.('Logo previewed. Save to keep it');
     e.target.value = '';
   };
 
@@ -102,11 +97,11 @@ export default function BrandingTab({ readOnly, notify }) {
             </div>
             <input ref={fileRef} type="file" accept="image/png,image/svg+xml" hidden onChange={onFile} />
             <Button variant="secondary" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>{logo ? 'Replace logo' : 'Upload logo'}</Button>
-            {logo && <Button variant="ghost" size="sm" onClick={() => { setLogo(null); notify?.('Logo removed. The initials tile is shown instead'); }}>Remove</Button>}
+            {logo && <Button variant="ghost" size="sm" onClick={async () => { if (await confirm({ tone: 'danger', title: 'Remove the agency logo?', message: 'The sidebar will show your agency’s initials instead.', detail: 'Save to apply the change.', confirmLabel: 'Remove logo' })) { setLogo(null); } }}>Remove</Button>}
           </div>
 
-          <Field label="Display name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setProfile({ ...profile, name })} /></Field>
-          <Field label="Agency description"><textarea rows={2} className={textareaCls} value={desc} onChange={(e) => setDesc(e.target.value)} onBlur={() => setProfile({ ...profile, description: desc })} /></Field>
+          <Field label="Display name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label="Agency description"><textarea rows={2} className={textareaCls} value={desc} onChange={(e) => setDesc(e.target.value)} /></Field>
 
           {/* Presets */}
           <div>
@@ -159,7 +154,6 @@ export default function BrandingTab({ readOnly, notify }) {
                 <input type="color" value={hex.length === 7 ? hex : '#3b72e6'} onChange={(e) => onHex(e.target.value)} aria-label="Pick colour" className="h-10 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0" />
                 <input className={`${inputCls} !w-32 uppercase`} value={hex} onChange={(e) => onHex(e.target.value)} aria-label="Hex colour" />
                 <small className="min-w-[160px] flex-1 text-xs text-ink-500">Shade is limited so white text stays readable.</small>
-                <Button size="sm" onClick={() => notify?.('Brand color saved')}>Save color</Button>
               </div>
               <div className="flex h-9 overflow-hidden rounded-xl" aria-label="Palette preview">
                 {swatches.map((c, i) => <span key={i} className="flex-1" style={{ background: c }} />)}
@@ -172,12 +166,10 @@ export default function BrandingTab({ readOnly, notify }) {
             Keep the management console structurally consistent for all agencies. Apply each agency’s logo, primary color, and cover identity most strongly on participant-facing discovery pages.
           </Callout>
         </fieldset>
+        {!readOnly && <SaveBar dirty={dirty} canSave={!!name.trim()} onDiscard={revert} onSave={save} />}
       </Panel>
 
-      <div className="space-y-6">
-        <SidebarPreview />
-        <ParticipantPreview />
-      </div>
+      <ParticipantPreview />
     </div>
   );
 }

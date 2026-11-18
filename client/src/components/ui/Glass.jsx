@@ -100,6 +100,9 @@ export function ProgressBar({ value, tone = 'brand', className = '' }) {
   );
 }
 
+/** Tables are always left aligned: alignment utilities on a column are ignored. */
+const left = (cls = '') => cls.replace(/\btext-(right|center)\b/g, '').trim();
+
 /** Table: columns = [{ key, label, className, render }] — calm header, soft row dividers */
 export function DataTable({ columns, rows, onRowClick, empty = 'Nothing to show yet.', footer }) {
   return (
@@ -108,7 +111,7 @@ export function DataTable({ columns, rows, onRowClick, empty = 'Nothing to show 
         <thead>
           <tr className="border-b border-[var(--glass-divider)]">
             {columns.map((c) => (
-              <th key={c.key} className={`px-5 py-2.5 text-xs font-normal text-ink-500 ${c.className ?? ''}`}>{c.label}</th>
+              <th key={c.key} className={`px-5 py-2.5 text-xs font-normal text-ink-500 ${left(c.className)}`}>{c.label}</th>
             ))}
           </tr>
         </thead>
@@ -120,7 +123,7 @@ export function DataTable({ columns, rows, onRowClick, empty = 'Nothing to show 
               className={`border-b border-[var(--glass-divider)] transition-colors last:border-0 hover:bg-white/50 ${onRowClick ? 'cursor-pointer' : ''}`}
             >
               {columns.map((c) => (
-                <td key={c.key} className={`px-5 py-3 align-middle text-[13px] text-ink-800 ${c.className ?? ''}`}>
+                <td key={c.key} className={`px-5 py-3 align-middle text-[13px] text-ink-800 ${left(c.className)}`}>
                   {c.render ? c.render(row) : row[c.key]}
                 </td>
               ))}

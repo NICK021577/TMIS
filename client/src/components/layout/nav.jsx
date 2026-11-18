@@ -39,16 +39,16 @@ export function SidebarFrame({ open, onClose, label, brand, children, footer }) 
 /** "Powered by UniFyle" — quiet attribution at the foot of the sidebar */
 export function PoweredBy() {
   return (
-    <div className="flex items-center gap-2 border-t border-[var(--glass-divider)] px-3 pt-3 text-[11px] text-ink-400">
+    <div className="flex items-center gap-2 border-t border-[var(--glass-divider)] px-3 pt-3 text-[11px] text-ink-600">
       Powered by
       <img src={mark} alt="" width={14} height={14} className="h-3.5 w-3.5 select-none" draggable={false} />
-      <span className="font-medium text-ink-500">UniFyle</span>
+      <span className="font-medium text-ink-800">UniFyle</span>
     </div>
   );
 }
 
 export function NavLabel({ children }) {
-  return <p className="px-3 pb-2 text-xs text-ink-400">{children}</p>;
+  return <p className="px-3 pb-2 text-xs font-medium text-ink-600">{children}</p>;
 }
 
 export function NavItem({ icon, label, to, end, count }) {
@@ -60,13 +60,13 @@ export function NavItem({ icon, label, to, end, count }) {
         `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] transition-colors ${
           isActive
             ? 'bg-white/85 font-medium text-ink-950 shadow-[0_2px_10px_rgba(70,100,200,0.10)] ring-1 ring-white'
-            : 'text-ink-600 hover:bg-white/50 hover:text-ink-950'
+            : 'text-ink-800 hover:bg-white/50 hover:text-ink-950'
         }`
       }
     >
       {({ isActive }) => (
         <>
-          <Icon name={icon} size={16} className={isActive ? 'text-brand-600' : 'text-ink-500'} />
+          <Icon name={icon} size={16} className={isActive ? 'text-brand-600' : 'text-ink-700'} />
           <span className="flex-1">{label}</span>
           {count > 0 && (
             <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand-600 px-1 text-[10px] font-medium text-white">{count}</span>
@@ -81,7 +81,7 @@ export function NavButton({ icon, children, onClick, danger }) {
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-ink-600 transition-colors ${
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] text-ink-800 transition-colors ${
         danger ? 'hover:bg-red-50/70 hover:text-danger' : 'hover:bg-white/50 hover:text-ink-950'
       }`}
     >

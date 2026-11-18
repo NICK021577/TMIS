@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageWrapper, PageHeader, SectionLabel } from '../../layout/PageWrapper';
-import { Badge, Button, DataTable, Field, Icon, Metric, Modal, Panel, PanelTitle, Select, inputCls } from '../../ui';
+import { BarChart, Badge, Button, DataTable, Donut, Field, Icon, Legend, Metric, Modal, Panel, PanelTitle, Select, inputCls } from '../../ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
-import { ACTIVITY_TYPES, FUNDING, peso } from '../../../data/mockData';
+import { ACTIVITY_TYPES, BUDGET_CATEGORIES, FUNDING, peso } from '../../../data/mockData';
 import { MONTH_NAMES, estOf, parseRange } from '../../../lib/budgetModel';
 
 const TODAY = '2025-06-18';
@@ -52,6 +52,12 @@ function Flag({ title, subtitle, rows, empty, onOpen }) {
   );
 }
 
+const SPEND_SERIES = [
+  { key: 'est', label: 'Allocated', color: 'var(--color-brand-200)' },
+  { key: 'act', label: 'Expenses', color: 'var(--color-brand-600)' },
+];
+const CATEGORY_COLORS = ['#6a43d8', '#4a82ee', '#34d399', '#fbbf24', '#f472b6', '#fb923c', '#94a3b8'];
+
 export default function Budget() {
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -68,15 +74,20 @@ export default function Budget() {
     const rec = mine.filter((i) => i.actual != null);
     return {
       a, est: mine.reduce((s, i) => s + estOf(i), 0), act: rec.reduce((s, i) => s + i.actual, 0),
+      estRecorded: rec.reduce((s, i) => s + estOf(i), 0),
       hasActual: rec.length > 0, hasItems: mine.length > 0,
       month: Number(parseRange(a.date).start.slice(5, 7)) - 1, funding: mine[0]?.funding ?? '—',
     };
   }), [activities, items]);
 
   const f = rows.filter((r) => (month === 'all' || r.month === Number(month)) && (type === 'all' || r.a.type === type) && (funding === 'all' || r.funding === funding));
-  const estimated = f.reduce((s, r) => s + r.est, 0);
-  const actual = f.reduce((s, r) => s + r.act, 0);
-  const remaining = annual - estimated;
+
+  // Allocated Budget, Expenses, Difference (recorded items only) and Remaining (allocation not yet spent)
+  const allocated = f.reduce((s, r) => s + r.est, 0);
+  const expenses = f.reduce((s, r) => s + r.act, 0);
+  const difference = expenses - f.reduce((s, r) => s + r.estRecorded, 0);
+  const remaining = allocated - expenses;
+  const hasExpenses = f.some((r) => r.hasActual);
   const conducted = f.filter((r) => r.a.status === 'Completed' || r.a.status === 'Ongoing');
   const reached = conducted.reduce((s, r) => s + r.a.participants, 0);
 
@@ -93,32 +104,36 @@ export default function Budget() {
     );
   }
 
-  const byMonth = MONTH_NAMES.map((m, i) => ({ m: m.slice(0, 3), est: f.filter((r) => r.month === i).reduce((s, r) => s + r.est, 0), act: f.filter((r) => r.month === i).reduce((s, r) => s + r.act, 0) }));
-  const maxBar = Math.max(1, ...byMonth.map((b) => Math.max(b.est, b.act)));
+  const byMonth = MONTH_NAMES.map((m, i) => ({ label: m.slice(0, 3), est: f.filter((r) => r.month === i).reduce((s, r) => s + r.est, 0), act: f.filter((r) => r.month === i).reduce((s, r) => s + r.act, 0) }));
+
+  const ids = new Set(f.map((r) => r.a.id));
+  const byCategory = BUDGET_CATEGORIES
+    .map((c, i) => ({ label: c, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length], value: items.filter((it) => ids.has(it.activityId) && it.category === c && it.actual != null).reduce((s, it) => s + it.actual, 0) }))
+    .filter((c) => c.value > 0);
 
   const group = (keyFn, keys) => keys.map((k) => ({ id: k, name: k, est: f.filter((r) => keyFn(r) === k).reduce((s, r) => s + r.est, 0), act: f.filter((r) => keyFn(r) === k).reduce((s, r) => s + r.act, 0), n: f.filter((r) => keyFn(r) === k).length }));
   const byType = group((r) => r.a.type, ACTIVITY_TYPES);
   const byFunding = group((r) => r.funding, FUNDING);
 
-  const over = f.filter((r) => r.hasActual && r.act > r.est).map((r) => ({ key: r.a.id, id: r.a.id, title: r.a.title, note: `${peso(r.act - r.est)} over` }));
+  const over = f.filter((r) => r.hasActual && r.act > r.estRecorded).map((r) => ({ key: r.a.id, id: r.a.id, title: r.a.title, note: `${peso(r.act - r.estRecorded)} over` }));
   const noBudget = f.filter((r) => (r.a.status === 'Completed' || r.a.status === 'Ongoing') && !r.hasItems).map((r) => ({ key: r.a.id, id: r.a.id, title: r.a.title, note: 'No budget' }));
   const notConducted = plans.filter((p) => p.end < TODAY).map((p) => ({ key: p.id, title: p.title, note: p.end }));
 
   const summaryCols = (label) => [
     { key: 'name', label, render: (r) => <span className="text-ink-950">{r.name}</span> },
     { key: 'n', label: 'Activities', className: 'text-center' },
-    { key: 'est', label: 'Estimated', className: 'text-right', render: (r) => <span className="tabular-nums">{peso(r.est)}</span> },
-    { key: 'act', label: 'Actual', className: 'text-right', render: (r) => <span className="tabular-nums">{peso(r.act)}</span> },
+    { key: 'est', label: 'Allocated Budget', className: 'text-right', render: (r) => <span className="tabular-nums">{peso(r.est)}</span> },
+    { key: 'act', label: 'Expenses', className: 'text-right', render: (r) => <span className="tabular-nums">{peso(r.act)}</span> },
   ];
   const totalRow = (list) => (
     <tr className="border-t border-[var(--glass-divider)] bg-white/30 text-[13px] font-medium text-ink-950">
-      <td className="px-5 py-3">Total</td><td className="px-5 py-3 text-center">{list.reduce((s, r) => s + r.n, 0)}</td>
-      <td className="px-5 py-3 text-right tabular-nums">{peso(list.reduce((s, r) => s + r.est, 0))}</td>
-      <td className="px-5 py-3 text-right tabular-nums">{peso(list.reduce((s, r) => s + r.act, 0))}</td>
+      <td className="px-5 py-3">Total</td><td className="px-5 py-3">{list.reduce((s, r) => s + r.n, 0)}</td>
+      <td className="px-5 py-3 tabular-nums">{peso(list.reduce((s, r) => s + r.est, 0))}</td>
+      <td className="px-5 py-3 tabular-nums">{peso(list.reduce((s, r) => s + r.act, 0))}</td>
     </tr>
   );
 
-  const exportView = () => csv([['Activity', 'Type', 'Estimated', 'Actual'], ...f.map((r) => [r.a.title, r.a.type, r.est, r.act])], 'annual-budget.csv');
+  const exportView = () => csv([['Activity', 'Type', 'Allocated Budget', 'Expenses'], ...f.map((r) => [r.a.title, r.a.type, r.est, r.act])], 'annual-budget.csv');
 
   return (
     <PageWrapper>
@@ -127,50 +142,56 @@ export default function Budget() {
         <Button onClick={() => setSetting(true)}>Set annual budget</Button>
       </PageHeader>
 
-      <Panel className="mb-5 flex flex-wrap gap-3 !p-3">
+      <Panel className="mb-5 flex flex-wrap gap-3 !px-5 !py-3">
         <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="all">Whole year</option>{MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}</Select>
         <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type"><option value="all">All activity types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</Select>
         <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option value="all">All funding sources</option>{FUNDING.map((t) => <option key={t}>{t}</option>)}</Select>
       </Panel>
 
-      <div className="mb-2 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Metric label="Budgeted" value={peso(annual)} note="Annual total for PRRI" />
-        <Metric label="Estimated" value={peso(estimated)} note={`${f.filter((r) => r.hasItems).length} activities with a budget`} />
-        <Metric label="Actual" value={peso(actual)} note={`${estimated ? Math.round((actual / estimated) * 100) : 0}% of estimate recorded`} tone="brand" />
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <Metric label="Allocated Budget" value={peso(allocated)} icon="file" note={`of ${peso(annual)} annual budget`} />
+        <Metric label="Expenses" value={hasExpenses ? peso(expenses) : '—'} icon="chart" tone="brand" note={`${allocated ? Math.round((expenses / allocated) * 100) : 0}% of allocated budget`} />
+        <Metric label="Difference" value={hasExpenses ? peso(difference) : '—'} icon="scan" tone={difference > 0 ? 'bad' : 'default'} note="Expenses vs allocation, recorded items" />
         <div className="rounded-[18px] bg-gradient-to-br from-brand-600 to-brand-800 p-4 text-white shadow-[0_10px_26px_rgba(59,114,230,0.3)]">
-          <span className="text-xs text-white/75">Remaining</span>
+          <span className="flex items-center justify-between text-xs text-white/75">Remaining<Icon name="award" size={15} /></span>
           <strong className="mt-1.5 block text-[24px] font-medium leading-none tracking-[-0.5px]">{peso(remaining)}</strong>
-          <small className="mt-2 block text-xs text-white/75">Budgeted minus estimated</small>
+          <small className="mt-2 block text-xs text-white/75">Allocated minus expenses</small>
         </div>
       </div>
 
-      <SectionLabel>Trend and statistics</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+      {/* Spending overview + expense by category */}
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.5fr_1fr]">
         <Panel>
-          <PanelTitle title="Budget by month" subtitle="Estimated vs actual">
-            <span className="flex gap-3 text-[11px] text-ink-500"><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-brand-200" />Estimated<i className="ml-1 mr-1 inline-block h-2 w-2 rounded-sm bg-brand-600" />Actual</span>
+          <PanelTitle title="Spending overview" subtitle="Allocated budget vs expenses by month">
+            <span className="flex gap-3 text-[11px] text-ink-500"><i className="mr-1 inline-block h-2 w-2 rounded-sm bg-brand-200" />Allocated<i className="ml-1 mr-1 inline-block h-2 w-2 rounded-sm bg-brand-600" />Expenses</span>
           </PanelTitle>
-          <div className="flex h-[170px] items-end gap-2 border-b border-[var(--glass-divider)]">
-            {byMonth.map((b) => (
-              <div key={b.m} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-                <div className="flex h-full w-full items-end justify-center gap-0.5">
-                  <div className="w-2.5 rounded-t bg-brand-200" style={{ height: `${(b.est / maxBar) * 100}%` }} title={`Estimated ${peso(b.est)}`} />
-                  <div className="w-2.5 rounded-t bg-brand-600" style={{ height: `${(b.act / maxBar) * 100}%` }} title={`Actual ${peso(b.act)}`} />
-                </div>
-                <small className="pb-1.5 text-[10px] text-ink-500">{b.m}</small>
-              </div>
-            ))}
-          </div>
+          <BarChart data={byMonth} series={SPEND_SERIES} height={230} format={(v) => `₱${Math.round(v / 1000)}k`} />
         </Panel>
+
         <Panel>
-          <PanelTitle title="Year-end statistics" />
-          <dl className="space-y-3 text-[13px]">
-            {[['Activities conducted', conducted.length], ['Participants reached', reached], ['Average attendance', '89.4%'], ['Budget committed', `${Math.round((estimated / annual) * 100)}%`]].map(([k, v]) => (
-              <div key={k} className="flex justify-between"><dt className="text-ink-500">{k}</dt><dd className="font-medium text-ink-950">{v}</dd></div>
-            ))}
-          </dl>
+          <PanelTitle title="Expense by category" subtitle="Recorded expenses only" />
+          {byCategory.length ? (
+            <div className="flex flex-col items-center gap-5 2xl:flex-row">
+              <Donut data={byCategory} size={180} thickness={26} label="Expenses by category">
+                <strong className="text-lg font-medium leading-none tracking-[-0.4px] text-ink-950">{peso(expenses)}</strong>
+                <small className="mt-1 text-[11px] text-ink-500">Total spent</small>
+              </Donut>
+              <div className="w-full min-w-0 flex-1"><Legend data={byCategory} format={peso} /></div>
+            </div>
+          ) : <p className="py-10 text-center text-[13px] text-ink-500">No expenses recorded for this selection.</p>}
         </Panel>
       </div>
+
+      {/* Year-end statistics */}
+      <Panel className="mt-4">
+        <PanelTitle title="Year-end statistics" />
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 lg:grid-cols-4">
+          {[['Activities conducted', conducted.length], ['Participants reached', reached], ['Average attendance', '89.4%'], ['Budget committed', `${Math.round((allocated / annual) * 100)}%`]].map(([k, v]) => (
+            <div key={k}><dt className="text-xs text-ink-500">{k}</dt><dd className="mt-1 text-[22px] font-medium leading-none tracking-[-0.4px] text-ink-950">{v}</dd></div>
+          ))}
+        </dl>
+      </Panel>
 
       <SectionLabel>Breakdown</SectionLabel>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -180,7 +201,7 @@ export default function Budget() {
 
       <SectionLabel>Needs attention</SectionLabel>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Flag title="Over budget" subtitle="Actual above estimate" rows={over} empty="No activity is over budget." onOpen={(id) => navigate(`/activities/${id}`)} />
+        <Flag title="Over budget" subtitle="Expenses above allocation" rows={over} empty="No activity is over budget." onOpen={(id) => navigate(`/activities/${id}`)} />
         <Flag title="Conducted without a budget" subtitle="Ongoing or completed, no line items" rows={noBudget} empty="Every conducted activity has a budget." onOpen={(id) => navigate(`/activities/${id}`)} />
         <Flag title="Planned but not conducted" subtitle="Planned events whose dates have passed" rows={notConducted} empty="Nothing was missed." onOpen={() => {}} />
       </div>

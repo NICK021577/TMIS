@@ -1,11 +1,14 @@
+import { useNavigate } from 'react-router-dom';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
 import { Badge, Button, Icon, Panel, PanelTitle } from '../../ui';
 import { AGENCY } from '../../../data/mockData';
 import { useStore } from '../../../hooks/useStore';
 import { AgencyMark } from '../../ui/AgencyMark';
+import { copyText } from '../../../lib/download';
 
 export default function AboutAgency({ notify }) {
   const { activities, profile } = useStore();
+  const navigate = useNavigate();
   const upcoming = activities.filter((a) => a.status !== 'Completed');
   const values = profile.values.split(';').map((v) => v.trim()).filter(Boolean);
   return (
@@ -15,7 +18,8 @@ export default function AboutAgency({ notify }) {
         title="About agency"
         subtitle="This is what participants see on your public agency page."
       >
-        <Button variant="secondary" icon="link" onClick={() => notify?.('Public page link copied')}>Copy public link</Button>
+        <Button variant="secondary" icon="link" onClick={async () => notify?.((await copyText(`${window.location.origin}/a/${profile.shortName.toLowerCase()}`)) ? 'Public page link copied' : 'Could not copy the link')}>Copy public link</Button>
+        <Button icon="eye" onClick={() => navigate(`/a/${profile.shortName.toLowerCase()}`)}>View public page</Button>
       </PageHeader>
 
       <Panel pad={false} className="mb-5 overflow-hidden">

@@ -1,3 +1,4 @@
+import { useConfirm } from '../modals/confirmContext';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../hooks/useStore';
@@ -21,6 +22,7 @@ const ADMIN = [
 
 export function Sidebar({ open = false, onClose }) {
   const { role, logout } = useAuth();
+  const confirm = useConfirm();
   const { profile } = useStore();
   const navigate = useNavigate();
   const visible = (items) => items.filter((i) => !i.roles || i.roles.includes(role));
@@ -35,11 +37,11 @@ export function Sidebar({ open = false, onClose }) {
           <AgencyMark size={40} />
           <div className="min-w-0 leading-tight">
             <strong className="block truncate text-[15px] font-medium text-ink-950">{profile.shortName}</strong>
-            <small className="block truncate text-xs text-ink-500">Training and Extension</small>
+            <small className="block truncate text-xs text-ink-700">Training and Extension</small>
           </div>
         </div>
       }
-      footer={<NavButton icon="logout" danger onClick={() => { logout(); navigate('/'); }}>Log out</NavButton>}
+      footer={<NavButton icon="logout" danger onClick={async () => { if (await confirm({ tone: 'signout', title: 'Sign out of UniFyle?', message: 'You will need to sign in again to continue.', confirmLabel: 'Sign out' })) { logout(); navigate('/'); } }}>Sign out</NavButton>}
     >
       <div className="space-y-0.5">
         <NavLabel>Workspace</NavLabel>

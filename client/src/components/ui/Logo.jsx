@@ -16,7 +16,7 @@ export function Logo({ size = 40, wordmark = true, tagline, className = '' }) {
       {wordmark && (
         <span className="leading-tight">
           <strong className="block text-[15px] font-semibold tracking-[-0.2px] text-ink-950">UniFyle</strong>
-          {tagline && <span className="block text-[11px] text-ink-500">{tagline}</span>}
+          {tagline && <span className="block text-[11px] text-ink-700">{tagline}</span>}
         </span>
       )}
     </span>

@@ -1,3 +1,4 @@
+import { useConfirm } from '../modals/confirmContext';
 import { useState } from 'react';
 import { Avatar, Badge, Button, Cell, DataTable, Drawer, Field, Panel, PanelTitle, inputCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
@@ -19,6 +20,7 @@ function InviteDrawer({ roles, onClose, onInvite }) {
 export default function UsersTab({ readOnly, notify }) {
   const { users, setUsers, roles } = useStore();
   const [inviting, setInviting] = useState(false);
+  const confirm = useConfirm();
 
   const invite = (email, role) => {
     const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -26,7 +28,11 @@ export default function UsersTab({ readOnly, notify }) {
     notify?.(`Invitation sent to ${email}`);
   };
   const changeRole = (u, role) => setUsers((l) => l.map((x) => (x.id === u.id ? { ...x, role, updated: 'June 18, 2025' } : x)));
-  const toggle = (u) => {
+  const toggle = async (u) => {
+    const ok = await (u.status === 'Suspended'
+      ? confirm({ tone: 'info', title: `Reactivate ${u.name}?`, message: 'They will be able to sign in to this agency again.', confirmLabel: 'Reactivate' })
+      : confirm({ tone: 'danger', title: `Suspend ${u.name}?`, message: 'They will be blocked from signing in to this agency until you reactivate them.', detail: 'Their records are kept.', confirmLabel: 'Suspend user' }));
+    if (!ok) return;
     setUsers((l) => l.map((x) => (x.id === u.id ? { ...x, status: x.status === 'Suspended' ? 'Active' : 'Suspended' } : x)));
     notify?.(u.status === 'Suspended' ? `${u.name} reactivated` : `${u.name} can no longer sign in`);
   };

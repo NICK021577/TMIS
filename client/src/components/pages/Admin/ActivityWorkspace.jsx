@@ -1,9 +1,11 @@
+import { useConfirm } from '../../modals/confirmContext';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PageWrapper } from '../../layout/PageWrapper';
 import { Badge, Button, Icon, Tabs } from '../../ui';
 import { useStore } from '../../../hooks/useStore';
 import AttendanceTab from '../../activity/AttendanceTab';
+import { EditContext } from '../../activity/editContext';
 import BudgetTab from '../../activity/BudgetTab';
 import { OverviewTab, ParticipantsTab, PlanTab, ResourcesTab, SessionsTab, StaffingTab } from '../../activity/tabsCore';
 import { CertificatesTab, DocumentsTab, FeedbackTab, OutputsTab, ReentryTab } from '../../activity/tabsRecords';
@@ -31,8 +33,11 @@ const TABS = [
 export default function ActivityWorkspace({ notify }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { activities } = useStore();
+  const { activities, details, restoreDetails, updateActivity } = useStore();
   const [tab, setTab] = useState('overview');
+  const [editing, setEditing] = useState(false);
+  const [snapshot, setSnapshot] = useState(null);
+  const confirm = useConfirm();
 
   const activity = activities.find((a) => String(a.id) === id);
 
@@ -69,15 +74,30 @@ export default function ActivityWorkspace({ notify }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" icon="edit" onClick={() => notify?.('Edit activity form opened')}>Edit activity</Button>
-          <Button variant="secondary" icon="more" aria-label="More" />
+          {editing ? (
+            <>
+              <Button variant="secondary" onClick={async () => { if (await confirm({ tone: 'warn', title: 'Discard your changes?', message: 'Anything you changed since pressing Edit activity will be lost.', confirmLabel: 'Discard changes', cancelLabel: 'Keep editing' })) { if (snapshot) { restoreDetails(activity.id, snapshot.details); updateActivity(activity.id, { capacity: snapshot.capacity }); } setEditing(false); notify?.('Changes discarded'); } }}>Cancel</Button>
+              <Button icon="check" onClick={() => { setEditing(false); notify?.('Changes saved'); }}>Save changes</Button>
+            </>
+          ) : (
+            <Button variant="secondary" icon="edit" onClick={() => { setSnapshot({ details: details[activity.id] ?? null, capacity: activity.capacity }); setEditing(true); }}>Edit activity</Button>
+          )}
         </div>
       </div>
 
+      {editing && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-2xl bg-brand-100/70 px-4 py-2.5 text-[13px] text-brand-900">
+          <Icon name="edit" size={15} />
+          <span><strong className="font-medium">Editing mode.</strong> Buttons and fields are unlocked. Press Save changes when you are done.</span>
+        </div>
+      )}
+
       <Tabs tabs={TABS} value={tab} onChange={pick} />
 
+      <EditContext.Provider value={editing}>
+
       {tab === 'overview'     && <OverviewTab activity={activity} goTab={pick} notify={notify} />}
-      {tab === 'plan'         && <PlanTab notify={notify} />}
+      {tab === 'plan'         && <PlanTab activity={activity} notify={notify} />}
       {tab === 'sessions'     && <SessionsTab notify={notify} />}
       {tab === 'staffing'     && <StaffingTab notify={notify} />}
       {tab === 'participants' && <ParticipantsTab activity={activity} goTab={pick} notify={notify} />}
@@ -88,7 +108,8 @@ export default function ActivityWorkspace({ notify }) {
       {tab === 'outputs'      && <OutputsTab notify={notify} />}
       {tab === 'feedback'     && <FeedbackTab notify={notify} />}
       {tab === 'reentry'      && <ReentryTab notify={notify} />}
-      {tab === 'certificates' && <CertificatesTab notify={notify} />}
+      {tab === 'certificates' && <CertificatesTab activity={activity} notify={notify} />}
+      </EditContext.Provider>
     </PageWrapper>
   );
 }

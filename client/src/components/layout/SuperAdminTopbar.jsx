@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
-import { Icon, Avatar } from '../ui';
+import { Icon } from '../ui';
+import AccountMenu from '../modals/AccountMenu';
 import { useAuth } from '../../context/AuthContext';
 import { HEADER_H } from './nav';
 
@@ -33,10 +34,7 @@ export function SuperAdminTopbar({ onMenu }) {
           <Icon name="shield" size={14} />
           Super Administrator
         </span>
-        <div className="flex items-center gap-3 rounded-full py-1 pl-1 pr-3">
-          <Avatar name={user?.name ?? 'Super Admin'} size="md" />
-          <strong className="hidden text-[13px] font-medium text-ink-950 sm:block">{user?.name ?? 'Super Admin'}</strong>
-        </div>
+        <AccountMenu compact links={[{ label: 'Global settings', to: '/platform/settings', icon: 'settings' }]} />
       </div>
     </header>
   );

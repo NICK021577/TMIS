@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { PageTransition } from './PageTransition';
 import { SuperAdminSidebar } from './SuperAdminSidebar';
 import { SuperAdminTopbar } from './SuperAdminTopbar';
 import { PlatformProvider } from '../../context/PlatformProvider';
@@ -19,7 +20,7 @@ export default function SuperAdminLayout({ notify }) {
         header={<SuperAdminTopbar onMenu={() => setMenuOpen(true)} />}
         sidebar={<SuperAdminSidebar open={menuOpen} onClose={() => setMenuOpen(false)} />}
       >
-        <Outlet />
+        <PageTransition />
       </AppShell>
     </PlatformProvider>
   );

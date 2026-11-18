@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { PageTransition } from './PageTransition';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { useStore } from '../../hooks/useStore';
@@ -21,7 +21,7 @@ export default function MainLayout() {
       header={<Topbar onMenu={() => setMenuOpen(true)} />}
       sidebar={<Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />}
     >
-      <Outlet />
+      <PageTransition />
     </AppShell>
   );
 }
