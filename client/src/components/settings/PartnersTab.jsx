@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useConfirm } from '../modals/confirmContext';
-import { Badge, Button, DataTable, Field, Modal, Panel, PanelTitle, inputCls } from '../ui';
+import { ActionIcon, Badge, Button, DataTable, Field, Modal, Panel, PanelTitle, inputCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
 import { AGENCY_TYPES } from '../../data/platformData';
 
@@ -44,7 +44,7 @@ export default function PartnersTab({ readOnly, notify }) {
       key: 'name', label: 'Partner',
       render: (p) => (editing === p.id ? (
         <input autoFocus className={`${inputCls} !h-8`} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => rename(p)} onKeyDown={(e) => e.key === 'Enter' && rename(p)} aria-label="Rename partner" />
-      ) : <span className="flex items-center gap-2"><strong className="font-medium text-ink-950">{p.name}</strong>{p.own && <Badge value="Your agency" tone="info" variant="pill" />}</span>),
+      ) : <span className="flex items-center gap-2 whitespace-nowrap"><strong className="font-medium text-ink-950">{p.name}</strong>{p.own && <span className="flex-shrink-0"><Badge value="Your agency" tone="info" variant="pill" /></span>}</span>),
     },
     {
       key: 'type', label: 'Type',
@@ -55,17 +55,19 @@ export default function PartnersTab({ readOnly, notify }) {
         </select>
       ),
     },
-    { key: 'used', label: 'Used in', render: (p) => <span className="text-ink-600">{usedIn(p)} {usedIn(p) === 1 ? 'activity' : 'activities'}{funds(p) ? ` · ${funds(p)} funding ${funds(p) === 1 ? 'source' : 'sources'}` : ''}</span> },
-    { key: 'status', label: 'Status', render: (p) => <Badge value={p.archived ? 'Archived' : 'Active'} tone={p.archived ? 'muted' : 'ok'} /> },
-    {
-      key: 'act', label: '', className: 'text-right',
-      render: (p) => !readOnly && (
+    { key: 'used', label: 'Used in', render: (p) => <span className="whitespace-nowrap text-ink-600">{usedIn(p)} {usedIn(p) === 1 ? 'activity' : 'activities'}{funds(p) ? ` · ${funds(p)} funding ${funds(p) === 1 ? 'source' : 'sources'}` : ''}</span> },
+    { key: 'status', label: 'Status', render: (p) => <span className="whitespace-nowrap"><Badge value={p.archived ? 'Archived' : 'Active'} tone={p.archived ? 'muted' : 'ok'} /></span> },
+    ...(readOnly ? [] : [{
+      key: 'act', label: 'Actions', className: 'text-right',
+      render: (p) => (
         <div className="flex justify-start gap-1">
-          <Button variant="ghost" size="sm" onClick={() => { setEditing(p.id); setDraft(p.name); }}>Rename</Button>
-          {!p.own && <Button variant="ghost" size="sm" onClick={() => toggle(p)}>{p.archived ? 'Restore' : 'Archive'}</Button>}
+          <ActionIcon icon="edit" tone="brand" label={`Rename ${p.name}`} onClick={() => { setEditing(p.id); setDraft(p.name); }} />
+          {!p.own && (p.archived
+            ? <ActionIcon icon="restore" tone="ok" label={`Restore ${p.name}`} onClick={() => toggle(p)} />
+            : <ActionIcon icon="archive" tone="danger" label={`Archive ${p.name}`} onClick={() => toggle(p)} />)}
         </div>
       ),
-    },
+    }]),
   ];
 
   return (
