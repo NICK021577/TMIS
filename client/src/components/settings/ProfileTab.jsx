@@ -1,28 +1,86 @@
 import { useState } from 'react';
-import { AgencyMark, Callout, Field, Panel, PanelTitle, inputCls, textareaCls } from '../ui';
+import { AgencyMark, Button, Callout, Field, Panel, PanelTitle, inputCls, textareaCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
 import { SaveBar } from './SettingsKit';
 
 const MAX_SHORT = 10;
 
-/** Agency profile: one record, two views (staff About page + participant About tab). */
+/** How the profile reads on the About page and the participant About tab. */
+function ProfilePreview({ profile }) {
+  const values = profile.values.split(';').map((v) => v.trim()).filter(Boolean);
+  return (
+    <div className="glass-inset rounded-2xl p-5">
+      <div className="flex items-center gap-3">
+        <AgencyMark size={48} />
+        <div className="min-w-0 leading-tight">
+          <strong className="block truncate text-[14px] font-medium text-ink-950">{profile.name || 'Agency name'}</strong>
+          <small className="text-xs text-ink-500">{profile.shortName || '—'} · Government agency</small>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div>
+          <h3 className="mb-1 text-xs text-ink-400">Mission</h3>
+          <p className="text-[13px] leading-relaxed text-ink-700">{profile.mission || '—'}</p>
+        </div>
+        <div>
+          <h3 className="mb-1 text-xs text-ink-400">Vision</h3>
+          <p className="text-[13px] leading-relaxed text-ink-700">{profile.vision || '—'}</p>
+        </div>
+      </div>
+      {values.length > 0 && (
+        <>
+          <h3 className="mb-2 mt-5 text-xs text-ink-400">Core values</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {values.map((v) => <span key={v} className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-brand-800 ring-1 ring-black/5">{v}</span>)}
+          </div>
+        </>
+      )}
+      <h3 className="mb-1 mt-5 text-xs text-ink-400">Mandate / About</h3>
+      <p className="text-[13px] leading-relaxed text-ink-700">{profile.mandate || '—'}</p>
+    </div>
+  );
+}
+
+/**
+ * Agency profile: one record, two views (staff About page + participant About tab).
+ * Opens on the preview; Edit swaps it for the form until the changes are saved or cancelled.
+ */
 export default function ProfileTab({ readOnly, notify }) {
   const { profile, setProfile } = useStore();
+  const [editing, setEditing] = useState(false);
   const [f, setF] = useState(profile);
   const set = (patch) => setF((p) => ({ ...p, ...patch }));
   const dirty = JSON.stringify(f) !== JSON.stringify(profile);
 
-  const values = f.values.split(';').map((v) => v.trim()).filter(Boolean);
+  const startEdit = () => { setF(profile); setEditing(true); };
+  const cancel = () => { setF(profile); setEditing(false); };
+  const save = () => {
+    setProfile(f);
+    setEditing(false);
+    notify?.('Profile saved. The About page and the participant About tab are updated');
+  };
+
+  if (!editing) {
+    return (
+      <Panel>
+        <PanelTitle title="Agency profile" subtitle="How it appears on the About page and the participant About tab">
+          {!readOnly && <Button size="sm" icon="edit" onClick={startEdit}>Edit profile</Button>}
+        </PanelTitle>
+        {readOnly && <div className="mb-4"><Callout tone="info" icon="lock">Only Agency Administrators can edit the agency profile.</Callout></div>}
+        <ProfilePreview profile={profile} />
+      </Panel>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_380px]">
     <Panel>
-      <PanelTitle title="Agency profile" subtitle="One record, two views. Staff read it on the About page and participants read it on the mobile About tab." />
-      {readOnly && <div className="mb-4"><Callout tone="info" icon="lock">Only Agency Administrators can edit the agency profile. You can read it here.</Callout></div>}
+      <PanelTitle title="Edit agency profile" subtitle="One record, two views. Staff read it on the About page and participants read it on the mobile About tab.">
+        <Button size="sm" variant="secondary" icon="eye" onClick={cancel}>Back to preview</Button>
+      </PanelTitle>
 
-      <fieldset disabled={readOnly} className="space-y-4 disabled:opacity-70">
+      <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
-          <Field label="Display name (full)"><input className={inputCls} value={f.name} onChange={(e) => set({ name: e.target.value })} /></Field>
+          <Field label="Display name (full)"><input className={inputCls} value={f.name} onChange={(e) => set({ name: e.target.value })} autoFocus /></Field>
           <Field label="Short name / acronym" hint={`${f.shortName.length}/${MAX_SHORT} characters. Shown in the sidebar.`}>
             <input className={inputCls} maxLength={MAX_SHORT} value={f.shortName} onChange={(e) => set({ shortName: e.target.value })} />
           </Field>
@@ -33,38 +91,9 @@ export default function ProfileTab({ readOnly, notify }) {
         </div>
         <Field label="Core values" hint="Separate with semicolons"><input className={inputCls} value={f.values} onChange={(e) => set({ values: e.target.value })} /></Field>
         <Field label="Mandate / About"><textarea rows={3} className={textareaCls} value={f.mandate} onChange={(e) => set({ mandate: e.target.value })} /></Field>
-      </fieldset>
-
-      {!readOnly && (
-        <SaveBar dirty={dirty} canSave={!!f.name.trim() && !!f.shortName.trim()} label="Save profile" onDiscard={() => setF(profile)}
-          onSave={() => { setProfile(f); notify?.('Profile saved. The About page and the participant About tab are updated'); }} />
-      )}
-    </Panel>
-
-    <Panel className="xl:sticky xl:top-0">
-      <PanelTitle title="How it appears" subtitle="Live preview of the About page and the participant About tab" />
-      <div className="glass-inset rounded-2xl p-4">
-        <div className="flex items-center gap-3">
-          <AgencyMark size={44} />
-          <div className="min-w-0 leading-tight">
-            <strong className="block truncate text-[13px] font-medium text-ink-950">{f.name || 'Agency name'}</strong>
-            <small className="text-xs text-ink-500">{f.shortName || '—'} · Government agency</small>
-          </div>
-        </div>
-        <h3 className="mb-1 mt-4 text-xs text-ink-400">Mission</h3>
-        <p className="text-[13px] leading-relaxed text-ink-700">{f.mission || '—'}</p>
-        <h3 className="mb-1 mt-4 text-xs text-ink-400">Vision</h3>
-        <p className="text-[13px] leading-relaxed text-ink-700">{f.vision || '—'}</p>
-        {values.length > 0 && (
-          <>
-            <h3 className="mb-2 mt-4 text-xs text-ink-400">Core values</h3>
-            <div className="flex flex-wrap gap-1.5">
-              {values.map((v) => <span key={v} className="rounded-full bg-white/80 px-2.5 py-1 text-xs text-brand-800 ring-1 ring-black/5">{v}</span>)}
-            </div>
-          </>
-        )}
       </div>
+
+      <SaveBar dirty={dirty} canSave={!!f.name.trim() && !!f.shortName.trim()} label="Save profile" onDiscard={cancel} onSave={save} />
     </Panel>
-    </div>
   );
 }
