@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useConfirm } from '../modals/confirmContext';
-import { Avatar, Badge, Button, Callout, Cell, DataTable, Drawer, Field, Icon, Modal, Panel, PanelTitle, Switch, inputCls } from '../ui';
+import { ActionIcon, Avatar, Badge, Button, Callout, Cell, DataTable, Drawer, Field, Icon, Modal, Panel, PanelTitle, Switch, inputCls } from '../ui';
 import { api } from '../../lib/api';
 import { copyText } from '../../lib/download';
 import { niceDate } from '../../lib/roles';
@@ -27,7 +27,7 @@ function AddUserDrawer({ roles, onClose, onAdd }) {
         <Field label="Last name"><input className={inputCls} value={f.lastName} onChange={(e) => set({ lastName: e.target.value })} /></Field>
       </div>
       <Field label="Email address"><input type="email" className={inputCls} value={f.email} onChange={(e) => set({ email: e.target.value })} placeholder="name@agency.gov.ph" /></Field>
-      <Field label="Role"><select className={inputCls} value={f.roleId} onChange={(e) => set({ roleId: e.target.value })}>{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
+      <Field label="Role"><select className={inputCls} value={f.roleId} onChange={(e) => set({ roleId: Number(e.target.value) })}>{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select></Field>
     </Drawer>
   );
 }
@@ -136,7 +136,7 @@ export default function UsersTab({ readOnly, notify }) {
     {
       key: 'role', label: 'Role',
       render: (u) => (readOnly || u.role === ADMIN_ROLE ? u.role : (
-        <select value={u.roleId} onChange={(e) => changeRole(u, e.target.value)} aria-label={`Role of ${u.name}`} className="glass-input h-8 rounded-full px-3 text-xs text-ink-800">
+        <select value={u.roleId} onChange={(e) => changeRole(u, Number(e.target.value))} aria-label={`Role of ${u.name}`} className="glass-input h-8 rounded-full px-3 text-xs text-ink-800">
           {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       )),
@@ -144,20 +144,24 @@ export default function UsersTab({ readOnly, notify }) {
     {
       key: 'menus', label: 'Menus',
       render: (u) => (
-        <span className="flex items-center gap-2 text-ink-600">
-          {u.menus.length} of {MENUS.length}
-          {Object.keys(u.menuOverride).length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">Custom</span>}
+        <span className="flex items-center gap-2 whitespace-nowrap text-ink-600">
+          <span>{u.menus.length} of {MENUS.length}</span>
+          {Object.keys(u.menuOverride).length > 0 && <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900">Custom</span>}
         </span>
       ),
     },
     { key: 'status', label: 'Status', render: (u) => <Badge value={u.status} /> },
     { key: 'updated', label: 'Last updated', render: (u) => <span className="text-ink-600">{niceDate(u.updated)}</span> },
-    { key: 'act', label: '', className: 'text-right', render: (u) => !readOnly && (
-      <div className="flex justify-start gap-1">
-        <Button variant="ghost" size="sm" onClick={() => setMenuFor(u.id)}>Menus</Button>
-        {u.role !== ADMIN_ROLE && <Button variant="ghost" size="sm" onClick={() => toggle(u)}>{u.status === 'Suspended' ? 'Reactivate' : 'Suspend'}</Button>}
-      </div>
-    ) },
+    ...(readOnly ? [] : [{
+      key: 'act', label: 'Actions', className: 'text-right', render: (u) => (
+        <div className="flex justify-start gap-1">
+          <ActionIcon icon="menu" tone="brand" label={`Menus for ${u.name}`} onClick={() => setMenuFor(u.id)} />
+          {u.role !== ADMIN_ROLE && (u.status === 'Suspended'
+            ? <ActionIcon icon="refresh" tone="ok" label={`Reactivate ${u.name}`} onClick={() => toggle(u)} />
+            : <ActionIcon icon="lock" tone="danger" label={`Suspend ${u.name}`} onClick={() => toggle(u)} />)}
+        </div>
+      ),
+    }]),
   ];
 
   const menuPerson = users.find((x) => x.id === menuFor);
