@@ -6,21 +6,23 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:schema": "node db/migrate.js",
-    "db:seed": "node db/seed.js",
-    "db:setup": "node db/migrate.js && node db/seed.js"
+    "db:schema": "node components/scripts/migrate.js",
+    "db:seed": "node components/scripts/seed.js",
+    "db:setup": "npm run db:schema && npm run db:seed"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@supabase/server": "^1.9.2",
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.7",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.6"
+    "postgres": "^4.1.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
