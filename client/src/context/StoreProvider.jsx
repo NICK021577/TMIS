@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StoreContext } from './storeContext';
-import { ACTIVITIES, AGENCY, AGENCY_ROLES_SEED, AGENCY_USERS, BUDGET_ITEMS, CATEGORIES_SEED, INVITES, NOTIFICATIONS, PEOPLE, PLANS } from '../data/mockData';
-import { DEFAULT_DETAILS, DOCUMENTS, EMPTY_DETAILS, FEEDBACK_FORM, RESOURCES, SESSIONS, STAFF_DAYS } from '../data/workspaceData';
+import { ACTIVITIES, AGENCY, BUDGET_ITEMS, CATEGORIES_SEED, FUNDING_SEED, INVITES, NOTIFICATIONS, PARTNERS_SEED, PEOPLE, PLANS } from '../data/mockData';
+import { AGENCY_ROLES, DEFAULT_DETAILS, DOCUMENTS, EMPTY_DETAILS, FEEDBACK_FORM, RESOURCES, SESSIONS, STAFF_DAYS } from '../data/workspaceData';
 import { BRAND_PRESETS } from '../lib/brand';
 
 const PRRI_ACTIVITIES = ACTIVITIES.filter((a) => a.tenant === 'PRRI');
@@ -23,9 +23,13 @@ export function StoreProvider({ children, notify }) {
   });
   const [brand, setBrand] = useState({ preset: 'unifyle', ...BRAND_PRESETS[0], tint: false });
   const [logo, setLogo] = useState(null);
+  const [cover, setCover] = useState(null);
   const [categories, setCategories] = useState(CATEGORIES_SEED.map((c) => ({ ...c, archived: false })));
-  const [users, setUsers] = useState(AGENCY_USERS);
-  const [roles, setRoles] = useState(AGENCY_ROLES_SEED);
+  // Partner directory and funding sources. Partners are plain names, they need no account here.
+  const [partners, setPartners] = useState(PARTNERS_SEED);
+  const [fundingSources, setFundingSources] = useState(FUNDING_SEED);
+  // The partner agencies of each activity: { activityId: [{ id, partnerId, role, notes }] }. Seeded activities start from the demo rows.
+  const [activityPartners, setActivityPartners] = useState({});
 
   // Participant registry. An invited person has no name or affiliation until they finish their profile on the mobile app.
   const [people, setPeople] = useState(PEOPLE);
@@ -40,6 +44,8 @@ export function StoreProvider({ children, notify }) {
   const [details, setDetailsState] = useState({});
   // The days of the activity (with the staff assigned to each). Attendance, feedback and sessions all read this list.
   const [staffDays, setStaffDays] = useState(STAFF_DAYS);
+  // After-activity reports by activity id: { versions: [...], current }
+  const [reports, setReports] = useState({});
   // One feedback form per day
   const [feedbackForms, setFeedbackForms] = useState([{ id: 1, day: 1, questions: FEEDBACK_FORM }, { id: 2, day: 2, questions: FEEDBACK_FORM.map((q) => ({ ...q })) }]);
 
@@ -58,9 +64,39 @@ export function StoreProvider({ children, notify }) {
   const restoreDetails = useCallback((id, snap) => setDetailsState((d) => { const n = { ...d }; if (snap) n[id] = snap; else delete n[id]; return n; }), []);
   const updateActivity = useCallback((id, patch) => setActivities((l) => l.map((a) => (a.id === id ? { ...a, ...patch } : a))), []);
 
-  const createActivity = useCallback((act, budget, det) => {
+  const partnersOf = useCallback((activityId) => activityPartners[activityId] ?? (activityId < 100 ? AGENCY_ROLES : []), [activityPartners]);
+  const setPartnersOf = useCallback((activityId, update) => setActivityPartners((m) => {
+    const current = m[activityId] ?? (activityId < 100 ? AGENCY_ROLES : []);
+    return { ...m, [activityId]: typeof update === 'function' ? update(current) : update };
+  }), []);
+
+  /** Adds a partner by name, or returns the one that already has that name (so "DA Region IX" is never split in two). */
+  const addPartner = useCallback((name, type) => {
+    const clean = name.trim();
+    const found = partners.find((p) => p.name.toLowerCase() === clean.toLowerCase());
+    if (found) { if (found.archived) setPartners((l) => l.map((p) => (p.id === found.id ? { ...p, archived: false } : p))); return found.id; }
+    const id = Date.now() + Math.random();
+    setPartners((l) => [...l, { id, name: clean, type, archived: false }]);
+    return id;
+  }, [partners]);
+
+  /** Renaming a funding source also renames it on every budget item, plan and activity that uses it. */
+  const renameFunding = useCallback((id, name) => {
+    const old = fundingSources.find((f) => f.id === id)?.name;
+    if (!old || old === name) return;
+    setFundingSources((l) => l.map((f) => (f.id === id ? { ...f, name } : f)));
+    setItems((l) => l.map((i) => (i.funding === old ? { ...i, funding: name } : i)));
+    setPlans((l) => l.map((p) => (p.funding === old ? { ...p, funding: name } : p)));
+    setDetailsState((d) => Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v.funding === old ? { ...v, funding: name } : v])));
+  }, [fundingSources]);
+
+  const fundingNames = useMemo(() => fundingSources.filter((f) => !f.archived).map((f) => f.name), [fundingSources]);
+  const allFundingNames = useMemo(() => fundingSources.map((f) => f.name), [fundingSources]);
+
+  const createActivity = useCallback((act, budget, det, partnerRows) => {
     const id = Date.now();
     if (det) setDetailsState((d) => ({ ...d, [id]: det }));
+    if (partnerRows) setActivityPartners((m) => ({ ...m, [id]: partnerRows.map((r, i) => ({ id: id + i, notes: '', ...r })) }));
     setActivities((l) => [{ ...act, id }, ...l]);
     setItems((l) => [...l, ...budget.map((b, i) => ({ ...b, id: id + i + 1, activityId: id }))]);
     return id;
@@ -85,9 +121,10 @@ export function StoreProvider({ children, notify }) {
 
   const value = useMemo(() => ({
     activities, items, plans, published, annual, notify, uid,
-    people, invitePerson, invites, setInvites, notifications, setNotifications, sessions, setSessions, documents, setDocuments, resources, setResources, staffDays, setStaffDays, feedbackForms, setFeedbackForms, details, getDetails, setDetails, restoreDetails, updateActivity, profile, setProfile, brand, setBrand, logo, setLogo, categories, setCategories, users, setUsers, roles, setRoles,
+    people, invitePerson, invites, setInvites, notifications, setNotifications, sessions, setSessions, documents, setDocuments, resources, setResources, staffDays, setStaffDays, feedbackForms, setFeedbackForms, reports, setReports, details, getDetails, setDetails, restoreDetails, updateActivity, profile, setProfile, brand, setBrand, logo, setLogo, cover, setCover, categories, setCategories,
+    partners, setPartners, addPartner, fundingSources, setFundingSources, renameFunding, fundingNames, allFundingNames, partnersOf, setPartnersOf,
     addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, setAnnual, createActivity,
-  }), [activities, items, plans, published, annual, notify, uid, people, invitePerson, invites, notifications, sessions, documents, resources, staffDays, feedbackForms, details, getDetails, setDetails, restoreDetails, updateActivity, profile, brand, logo, categories, users, roles, addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, createActivity]);
+  }), [activities, items, plans, published, annual, notify, uid, people, invitePerson, invites, notifications, sessions, documents, resources, staffDays, feedbackForms, reports, details, getDetails, setDetails, restoreDetails, updateActivity, profile, brand, logo, cover, categories, partners, addPartner, fundingSources, renameFunding, fundingNames, allFundingNames, partnersOf, setPartnersOf, addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, createActivity]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

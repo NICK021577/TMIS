@@ -3,28 +3,33 @@
  * Replace with /api/platform/* calls once the server exists.
  */
 
-export const AGENCY_TYPES = ['Government', 'Academic', 'Private', 'Non-profit'];
+export { AGENCY_TYPES } from '../lib/verification';
 
 export const SEED_AGENCIES = [
-  { id: 'PRRI',   name: 'Philippine Rubber Research Institute', type: 'Government', region: 'Region IX',  created: '2025-01-06', admin: 'Alexis Ramos',  usage: '24 activities · 624 participants', suspended: false },
-  { id: 'DA-BAR', name: 'Bureau of Agricultural Research',      type: 'Government', region: 'NCR',        created: '2025-02-11', admin: 'Assigned on approval', usage: 'Light usage', suspended: false },
-  { id: 'CATC',   name: 'Cotabato Agri-Training Center',        type: 'Government', region: 'Region XII', created: '2025-05-23', admin: 'Jose Macaraeg', usage: 'Light usage', suspended: false },
+  { id: 'PRRI',   name: 'Philippine Rubber Research Institute', type: 'Government Agency', region: 'Region IX',  created: '2025-01-06', admin: 'Alexis Ramos',  usage: '24 activities · 624 participants', suspended: false },
+  { id: 'DA-BAR', name: 'Bureau of Agricultural Research',      type: 'Government Agency', region: 'NCR',        created: '2025-02-11', admin: 'Assigned on approval', usage: 'Light usage', suspended: false },
+  { id: 'CATC',   name: 'Cotabato Agri-Training Center',        type: 'Government Agency', region: 'Region XII', created: '2025-05-23', admin: 'Jose Macaraeg', usage: 'Light usage', suspended: false },
 ];
 
 /** The same fields the public registration form collects (Register your agency). */
 export const contactName = (a) => [a.firstName, a.middleName, a.lastName].filter(Boolean).join(' ');
 
-const docs = (acr, sizes = ['0.4 MB', '1.1 MB', '0.6 MB']) => [
-  { id: 'authLetter', label: 'Authorization letter',           file: `${acr}_Authorization_Letter.pdf`, size: sizes[0] },
-  { id: 'moa',        label: 'Memorandum of Agreement (MOA)',  file: `${acr}_MOA_signed.pdf`,           size: sizes[1] },
-  { id: 'validId',    label: 'Valid ID of the contact person', file: `${acr}_Contact_ID.jpg`,           size: sizes[2] },
-];
+/** Documents by slot id (see lib/verification.js): authority, entity, validId, moa. `kind` is which document was uploaded. */
+const doc = (id, kind, file, size) => ({ id, kind, file, size });
 
 export const SEED_APPLICATIONS = [
-  { id: 1, agency: 'Mindanao Abaca Development Office', acronym: 'MADO', type: 'Government', region: 'Region XI',  firstName: 'Ramon', middleName: 'Dela Cruz', lastName: 'Iligan',    email: 'r.iligan@mado.gov.ph',  phone: '0917 555 0142', docs: docs('MADO'), submitted: '2025-06-12', status: 'Pending' },
-  { id: 2, agency: 'Western Visayas Coconut Institute', acronym: 'WVCI', type: 'Academic',   region: 'Region VI',  firstName: 'Lea',   middleName: '',           lastName: 'Gonzales',  email: 'lgonzales@wvci.edu.ph', phone: '0928 555 0177', docs: docs('WVCI', ['0.3 MB', '1.4 MB', '0.5 MB']), submitted: '2025-06-09', status: 'Under review' },
-  { id: 3, agency: 'Bukidnon Cacao Growers Federation', acronym: 'BCGF', type: 'Private',    region: 'Region X',   firstName: 'Ana',   middleName: 'Reyes',      lastName: 'Pelayo',    email: 'ana@bcgf.org',          phone: '0939 555 0108', docs: docs('BCGF').slice(0, 2), submitted: '2025-06-03', status: 'Needs info', reason: 'Valid ID of the contact person is missing. Please upload it.' },
-  { id: 4, agency: 'Cotabato Agri-Training Center',     acronym: 'CATC', type: 'Government', region: 'Region XII', firstName: 'Jose',  middleName: '',           lastName: 'Macaraeg',  email: 'jmacaraeg@catc.gov.ph', phone: '0917 555 0163', docs: docs('CATC'), submitted: '2025-05-21', status: 'Approved' },
+  { id: 1, agency: 'Mindanao Abaca Development Office', acronym: 'MADO', type: 'Government Agency', region: 'Region XI',  firstName: 'Ramon', middleName: 'Dela Cruz', lastName: 'Iligan',    email: 'r.iligan@mado.gov.ph',  phone: '0917 555 0142',
+    docs: [doc('authority', 'Endorsement letter', 'MADO_Endorsement_Letter.pdf', '0.4 MB'), doc('validId', 'Official agency / employee ID', 'MADO_Contact_ID.jpg', '0.6 MB'), doc('moa', 'Memorandum of Agreement', 'MADO_MOA_signed.pdf', '1.1 MB')],
+    submitted: '2025-06-12', status: 'Pending' },
+  { id: 2, agency: 'Western Visayas Coconut Institute', acronym: 'WVCI', type: 'Educational Institution', region: 'Region VI',  firstName: 'Lea',   middleName: '',           lastName: 'Gonzales',  email: 'lgonzales@wvci.edu.ph', phone: '0928 555 0177',
+    docs: [doc('authority', 'Designation letter', 'WVCI_Designation_Letter.pdf', '0.3 MB'), doc('validId', 'Philippine government-issued ID', 'WVCI_Contact_ID.jpg', '0.5 MB')],
+    submitted: '2025-06-09', status: 'Under review' },
+  { id: 3, agency: 'Bukidnon Cacao Growers Federation', acronym: 'BCGF', type: 'NGO / Cooperative / Association', region: 'Region X',   firstName: 'Ana',   middleName: 'Reyes',      lastName: 'Pelayo',    email: 'ana@bcgf.org',          phone: '0939 555 0108',
+    docs: [doc('authority', 'Board resolution', 'BCGF_Board_Resolution.pdf', '0.4 MB'), doc('entity', 'SEC non-stock registration', 'BCGF_SEC_Registration.pdf', '1.2 MB')],
+    submitted: '2025-06-03', status: 'Needs info', reason: 'Valid ID of the contact person is missing. Please upload it.' },
+  { id: 4, agency: 'Cotabato Agri-Training Center',     acronym: 'CATC', type: 'Government Agency', region: 'Region XII', firstName: 'Jose',  middleName: '',           lastName: 'Macaraeg',  email: 'jmacaraeg@catc.gov.ph', phone: '0917 555 0163',
+    docs: [doc('authority', 'Office order', 'CATC_Office_Order.pdf', '0.4 MB'), doc('validId', 'Official agency / employee ID', 'CATC_Contact_ID.jpg', '0.6 MB'), doc('moa', 'Memorandum of Agreement', 'CATC_MOA_signed.pdf', '1.1 MB')],
+    submitted: '2025-05-21', status: 'Approved' },
 ];
 
 export const SEED_AUDIT = [
@@ -37,14 +42,21 @@ export const PLATFORM_ADMINS = [
   { id: 'a2', name: 'Marco Reyes',    email: 'mreyes@unifyle.gov.ph',     role: 'Super Administrator', lastSignIn: '3 days ago', status: 'Active' },
 ];
 
+/**
+ * One account per person (unique email). Role and status live on each membership, one per agency,
+ * so the same person can be an administrator in one agency and a participant in another.
+ */
+const m = (agency, role, joined, status = 'Active') => ({ agency, role, joined, status });
 export const SEED_ACCOUNTS = [
-  { id: 'u1', name: 'Alexis Ramos',       email: 'alexis.ramos@prri.gov.ph', role: 'Agency Administrator', agencies: ['PRRI'],           status: 'Active' },
-  { id: 'u2', name: 'Dr. Marissa Flores', email: 'm.flores@prri.gov.ph',     role: 'Committee Member',     agencies: ['PRRI'],           status: 'Active' },
-  { id: 'u3', name: 'Engr. Ana Lucero',   email: 'a.lucero@prri.gov.ph',     role: 'Resource Person',      agencies: ['PRRI', 'DA-BAR'], status: 'Active' },
-  { id: 'u4', name: 'Jose Macaraeg',      email: 'jmacaraeg@catc.gov.ph',    role: 'Agency Administrator', agencies: ['CATC'],           status: 'Active' },
-  { id: 'u5', name: 'Juan Dela Cruz',     email: 'juan.delacruz@email.com',  role: 'Participant',          agencies: ['PRRI'],           status: 'Active' },
-  { id: 'u6', name: 'Maria Santos',       email: 'maria.santos@ipil.gov.ph', role: 'Participant',          agencies: ['PRRI', 'CATC'],   status: 'Active' },
-  { id: 'u7', name: 'Elena Garcia',       email: 'elena.garcia@email.com',   role: 'Participant',          agencies: ['PRRI'],           status: 'Suspended' },
+  { id: 'u1', name: 'Alexis Ramos',       email: 'alexis.ramos@prri.gov.ph', status: 'Active',    lastSignIn: 'Today',      memberships: [m('PRRI', 'Agency Administrator', '2025-01-06')] },
+  { id: 'u2', name: 'Dr. Marissa Flores', email: 'm.flores@prri.gov.ph',     status: 'Active',    lastSignIn: 'Yesterday',  memberships: [m('PRRI', 'Committee Member', '2025-01-20')] },
+  { id: 'u3', name: 'Engr. Ana Lucero',   email: 'a.lucero@prri.gov.ph',     status: 'Active',    lastSignIn: '2 days ago', memberships: [m('PRRI', 'Resource Person', '2025-01-20'), m('DA-BAR', 'Committee Member', '2025-03-04')] },
+  { id: 'u8', name: 'Dr. Leonilo Castor', email: 'l.castor@prri.gov.ph',     status: 'Active',    lastSignIn: 'Never',      memberships: [m('PRRI', 'Resource Person', '2025-06-12', 'Invited')] },
+  { id: 'u4', name: 'Jose Macaraeg',      email: 'jmacaraeg@catc.gov.ph',    status: 'Active',    lastSignIn: '3 days ago', memberships: [m('CATC', 'Agency Administrator', '2025-05-23')] },
+  { id: 'u9', name: 'Rina Mercado',       email: 'rina.mercado@dabar.gov.ph', status: 'Active',   lastSignIn: '5 days ago', memberships: [m('DA-BAR', 'Agency Administrator', '2025-02-11'), m('CATC', 'Resource Person', '2025-06-01')] },
+  { id: 'u5', name: 'Juan Dela Cruz',     email: 'juan.delacruz@email.com',  status: 'Active',    lastSignIn: 'Today',      memberships: [m('PRRI', 'Participant', '2025-02-02')] },
+  { id: 'u6', name: 'Maria Santos',       email: 'maria.santos@ipil.gov.ph', status: 'Active',    lastSignIn: 'Yesterday',  memberships: [m('PRRI', 'Participant', '2025-02-09'), m('CATC', 'Participant', '2025-06-02')] },
+  { id: 'u7', name: 'Elena Garcia',       email: 'elena.garcia@email.com',   status: 'Suspended', lastSignIn: '3 weeks ago', memberships: [m('PRRI', 'Participant', '2025-03-15')] },
 ];
 
 export const SEED_SETTINGS = {
@@ -54,16 +66,11 @@ export const SEED_SETTINGS = {
   budgetCategories: ['Venue', 'Meals', 'Materials', 'Transportation', 'Honoraria', 'Supplies', 'Other'],
   certificate: { minAttendance: 80, requireFeedback: true, requireReentryPlan: true },
 
-  // What an agency must submit when it registers
+  // Upload rules for the Documents step of Register your agency. Which documents are
+  // required depends on the organization type; see lib/verification.js.
   registration: {
-    docs: [
-      { id: 'authLetter', label: 'Authorization letter',           required: true },
-      { id: 'moa',        label: 'Memorandum of Agreement (MOA)',  required: true },
-      { id: 'validId',    label: 'Valid ID of the contact person', required: true },
-    ],
     fileTypes: { pdf: true, jpg: true, png: true },
     maxMb: 5,
-    agencyTypes: ['Government', 'Academic', 'Private', 'Non-profit'],
   },
 
   // Emails sent by the platform

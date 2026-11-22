@@ -6,7 +6,24 @@
 export const TODAY_ISO = '2025-06-18';
 
 export const ACTIVITY_TYPES = ['Skills Training', 'Extension Activity', 'Seminar', 'Workshop'];
-export const FUNDING = ['GAA 2025', 'Agency Fund', 'Partner Grant'];
+
+/**
+ * Partner directory: organizations an agency works with. A partner is only a name and a type,
+ * it does not need an account here. `own` marks the agency itself so it can be picked as Implementing.
+ */
+export const PARTNERS_SEED = [
+  { id: 1, name: 'Philippine Rubber Research Institute', type: 'Government Agency', own: true, archived: false },
+  { id: 2, name: 'DA Region IX',                         type: 'Government Agency', archived: false },
+  { id: 3, name: 'Zamboanga Sibugay LGU',                type: 'Government Agency', archived: false },
+  { id: 4, name: 'Rubber Growers Association',           type: 'NGO / Cooperative / Association', archived: false },
+];
+
+/** Funding sources. `partnerId` says which partner pays (empty for the agency's own money, e.g. GAA). */
+export const FUNDING_SEED = [
+  { id: 1, name: 'GAA 2025',      partnerId: null, archived: false },
+  { id: 2, name: 'Agency Fund',   partnerId: null, archived: false },
+  { id: 3, name: 'Partner Grant', partnerId: 2,    archived: false },
+];
 export const BUDGET_CATEGORIES = ['Venue', 'Meals', 'Materials', 'Transportation', 'Honoraria', 'Supplies', 'Other'];
 
 export const peso = (n) => `${n < 0 ? '-' : ''}₱${Math.abs(Math.round(n)).toLocaleString('en-PH')}`;
@@ -65,12 +82,12 @@ export const INVITES = [
 ];
 
 export const CATEGORIES_SEED = [
-  { id: 1, name: 'Farmer',                                   questions: 'Rubber farm area (hectares); Years of experience' },
-  { id: 2, name: 'Farmer cooperative or association member', questions: 'Cooperative name; Number of members' },
-  { id: 3, name: 'LGU or government staff',                  questions: 'Office or department' },
-  { id: 4, name: 'Student',                                  questions: 'School; Course or program' },
-  { id: 5, name: 'Partner organization staff',               questions: '' },
-  { id: 6, name: 'Other',                                    questions: '' },
+  { id: 1, name: 'Farmer' },
+  { id: 2, name: 'Farmer cooperative or association member' },
+  { id: 3, name: 'LGU or government staff' },
+  { id: 4, name: 'Student' },
+  { id: 5, name: 'Partner organization staff' },
+  { id: 6, name: 'Other' },
 ];
 
 /* ── Budget ─────────────────────────────────────────────────────── */
@@ -170,17 +187,6 @@ export const BRAND_PRESETS = [
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /* ── Agency settings ────────────────────────────────────────────── */
-export const AGENCY_USERS = [
-  { id: 1, name: 'Alexis Ramos',   email: 'alexis.ramos@prri.gov.ph', role: 'Agency Administrator', status: 'Active', updated: 'June 12, 2025' },
-  { id: 2, name: 'Marissa Flores', email: 'm.flores@prri.gov.ph',     role: 'Committee Member',     status: 'Active', updated: 'June 12, 2025' },
-  { id: 3, name: 'Leonilo Castor', email: 'l.castor@prri.gov.ph',     role: 'Resource Person',      status: 'Active', updated: 'June 12, 2025' },
-];
-export const AGENCY_ROLES_SEED = [
-  { id: 1, role: 'Agency Administrator', access: 'All agency records',  users: '3 users',  updated: 'June 12, 2025' },
-  { id: 2, role: 'Committee Member',     access: 'Assigned activities', users: '12 users', updated: 'June 12, 2025' },
-  { id: 3, role: 'Resource Person',      access: 'Assigned sessions',   users: '18 users', updated: 'June 12, 2025' },
-];
-export const DATA_ACCESS = ['All agency records', 'Assigned activities', 'Assigned sessions'];
 
 /* ── Notifications (bell menu) ──────────────────────────────────── */
 export const NOTIFICATIONS = [

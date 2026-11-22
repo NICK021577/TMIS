@@ -4,7 +4,7 @@ import { PageWrapper, PageHeader, SectionLabel } from '../../layout/PageWrapper'
 import { BarChart, Badge, Button, DataTable, Donut, Field, Icon, Legend, Metric, Modal, Panel, PanelTitle, Select, inputCls } from '../../ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
-import { ACTIVITY_TYPES, BUDGET_CATEGORIES, FUNDING, peso } from '../../../data/mockData';
+import { ACTIVITY_TYPES, BUDGET_CATEGORIES, peso } from '../../../data/mockData';
 import { MONTH_NAMES, estOf, parseRange } from '../../../lib/budgetModel';
 
 const TODAY = '2025-06-18';
@@ -61,7 +61,7 @@ const CATEGORY_COLORS = ['#6a43d8', '#4a82ee', '#34d399', '#fbbf24', '#f472b6', 
 export default function Budget() {
   const navigate = useNavigate();
   const { role } = useAuth();
-  const { activities, items, plans, annual } = useStore();
+  const { activities, items, plans, annual, allFundingNames } = useStore();
   const [month, setMonth] = useState('all');
   const [type, setType] = useState('all');
   const [funding, setFunding] = useState('all');
@@ -113,7 +113,7 @@ export default function Budget() {
 
   const group = (keyFn, keys) => keys.map((k) => ({ id: k, name: k, est: f.filter((r) => keyFn(r) === k).reduce((s, r) => s + r.est, 0), act: f.filter((r) => keyFn(r) === k).reduce((s, r) => s + r.act, 0), n: f.filter((r) => keyFn(r) === k).length }));
   const byType = group((r) => r.a.type, ACTIVITY_TYPES);
-  const byFunding = group((r) => r.funding, FUNDING);
+  const byFunding = group((r) => r.funding, allFundingNames);
 
   const over = f.filter((r) => r.hasActual && r.act > r.estRecorded).map((r) => ({ key: r.a.id, id: r.a.id, title: r.a.title, note: `${peso(r.act - r.estRecorded)} over` }));
   const noBudget = f.filter((r) => (r.a.status === 'Completed' || r.a.status === 'Ongoing') && !r.hasItems).map((r) => ({ key: r.a.id, id: r.a.id, title: r.a.title, note: 'No budget' }));
@@ -145,7 +145,7 @@ export default function Budget() {
       <Panel className="mb-5 flex flex-wrap gap-3 !px-5 !py-3">
         <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="all">Whole year</option>{MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}</Select>
         <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type"><option value="all">All activity types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</Select>
-        <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option value="all">All funding sources</option>{FUNDING.map((t) => <option key={t}>{t}</option>)}</Select>
+        <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option value="all">All funding sources</option>{allFundingNames.map((t) => <option key={t}>{t}</option>)}</Select>
       </Panel>
 
       {/* KPI cards */}

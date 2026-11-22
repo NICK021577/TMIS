@@ -21,6 +21,7 @@ export function AppShell({ header, sidebar, children, style, tint }) {
           {children}
         </main>
       </div>
+      <div id="overlay-root" />
     </div>
   );
 }

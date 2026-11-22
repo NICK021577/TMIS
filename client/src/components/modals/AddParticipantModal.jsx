@@ -24,7 +24,6 @@ export default function AddParticipantModal({ activity, onClose }) {
   const [touched, setTouched] = useState(false);
 
   const valid = EMAIL_PATTERN.test(email.trim());
-  const questions = options.find((c) => c.name === category)?.questions?.split(';').map((q) => q.trim()).filter(Boolean) ?? [];
 
   function submit(e) {
     e.preventDefault();
@@ -74,7 +73,7 @@ export default function AddParticipantModal({ activity, onClose }) {
           {touched && !valid && <small className="flex items-center gap-1 text-[11px] text-danger"><Icon name="alert" size={12} />Enter a valid email address.</small>}
         </Field>
 
-        <Field label="Category" hint="Decides which extra questions the participant answers.">
+        <Field label="Category" hint="Set by this invitation. The participant cannot change it.">
           <select className={inputCls} value={category} onChange={(e) => setCategory(e.target.value)}>
             {options.map((c) => <option key={c.id}>{c.name}</option>)}
           </select>
@@ -83,7 +82,7 @@ export default function AddParticipantModal({ activity, onClose }) {
         <div className="rounded-2xl border border-dashed border-brand-200 bg-brand-50/60 p-4">
           <strong className="flex items-center gap-2 text-[12px] font-medium text-brand-900"><Icon name="sparkle" size={14} />The participant will fill in</strong>
           <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {['Full name', 'Organization / affiliation', 'Location', ...questions].map((q) => (
+            {['Full name', 'Location'].map((q) => (
               <li key={q} className="rounded-full bg-white/80 px-2.5 py-1 text-[11px] text-ink-700 ring-1 ring-black/5">{q}</li>
             ))}
           </ul>

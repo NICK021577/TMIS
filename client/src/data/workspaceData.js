@@ -33,9 +33,10 @@ export const SESSIONS = [
 export const STAFF = [
   { id: 1, name: 'Ms. Joy Fabian',        role: 'Facilitator', duty: 'Day-to-day, Day 1 to 3',            status: 'Assigned' },
   { id: 2, name: 'Mr. Ramil Ocampo',      role: 'Facilitator', duty: 'Demo farm sessions, Day 2',          status: 'Assigned' },
-  { id: 3, name: 'Dr. Marissa L. Flores', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
+  { id: 3, name: 'Dr. Marissa L. Flores', email: 'm.flores@prri.gov.ph', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
   { id: 4, name: 'Ms. Liza Navarro',      role: 'Committee',   duty: 'Registration, registration desk',    status: 'Assigned' },
   { id: 5, name: 'Mr. Paolo Dizon',       role: 'Committee',   duty: 'Logistics, venue, meals, transport', status: 'Pending' },
+  { id: 6, name: 'Dr. Leonilo B. Castor', email: 'l.castor@prri.gov.ph', role: 'Resource person', duty: 'Session speaker', status: 'Assigned' },
 ];
 
 export const OBJECTIVES = [
@@ -49,10 +50,10 @@ export const OUTCOMES = [
 ];
 
 export const AGENCY_ROLES = [
-  { id: 1, agency: 'Philippine Rubber Research Institute', role: 'Implementing',  notes: 'Default role, plans and runs the activity' },
-  { id: 2, agency: 'DA Region IX',                         role: 'Funding',       notes: 'GAA 2025 co-funding' },
-  { id: 3, agency: 'Zamboanga Sibugay LGU',                role: 'Collaborating', notes: 'Venue and logistics support' },
-  { id: 4, agency: 'Rubber Growers Association',           role: 'Participating', notes: 'Nominates 12 farmer-participants' },
+  { id: 1, partnerId: 1, role: 'Implementing',  notes: 'Default role, plans and runs the activity' },
+  { id: 2, partnerId: 2, role: 'Funding',       notes: 'GAA 2025 co-funding' },
+  { id: 3, partnerId: 3, role: 'Collaborating', notes: 'Venue and logistics support' },
+  { id: 4, partnerId: 4, role: 'Participating', notes: 'Nominates 12 farmer-participants' },
 ];
 export const ROLE_OPTIONS = ['Implementing', 'Funding', 'Collaborating', 'Participating'];
 
@@ -127,19 +128,20 @@ export const CERT_ROWS = [
 export const STAFF_DAYS = [
   { n: 1, label: 'June 17, Tuesday', staff: [
     { id: 11, name: 'Ms. Joy Fabian',        role: 'Facilitator', duty: 'Day-to-day facilitation',            status: 'Assigned' },
-    { id: 12, name: 'Dr. Marissa L. Flores', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
+    { id: 12, name: 'Dr. Marissa L. Flores', email: 'm.flores@prri.gov.ph', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
     { id: 13, name: 'Ms. Liza Navarro',      role: 'Committee',   duty: 'Registration desk',                  status: 'Assigned' },
     { id: 14, name: 'Mr. Paolo Dizon',       role: 'Committee',   duty: 'Logistics, venue, meals, transport', status: 'Pending' },
+    { id: 15, name: 'Dr. Leonilo B. Castor', email: 'l.castor@prri.gov.ph', role: 'Resource person', duty: 'Rubber production session', status: 'Assigned' },
   ] },
   { n: 2, label: 'June 18, Wednesday', staff: [
     { id: 21, name: 'Ms. Joy Fabian',        role: 'Facilitator', duty: 'Day-to-day facilitation',            status: 'Assigned' },
     { id: 22, name: 'Mr. Ramil Ocampo',      role: 'Facilitator', duty: 'Demo farm sessions',                 status: 'Assigned' },
-    { id: 23, name: 'Dr. Marissa L. Flores', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
+    { id: 23, name: 'Dr. Marissa L. Flores', email: 'm.flores@prri.gov.ph', role: 'Committee',   duty: 'Chair, overall organizing',          status: 'Assigned' },
     { id: 24, name: 'Mr. Paolo Dizon',       role: 'Committee',   duty: 'Field transport',                    status: 'Pending' },
   ] },
   { n: 3, label: 'June 19, Thursday', staff: [
     { id: 31, name: 'Ms. Joy Fabian',        role: 'Facilitator', duty: 'Day-to-day facilitation, closing',   status: 'Assigned' },
-    { id: 32, name: 'Dr. Marissa L. Flores', role: 'Committee',   duty: 'Chair, closing program',             status: 'Assigned' },
+    { id: 32, name: 'Dr. Marissa L. Flores', email: 'm.flores@prri.gov.ph', role: 'Committee',   duty: 'Chair, closing program',             status: 'Assigned' },
     { id: 33, name: 'Ms. Liza Navarro',      role: 'Committee',   duty: 'Certificates and clearance',         status: 'Assigned' },
   ] },
 ];
@@ -180,6 +182,15 @@ export const FEEDBACK_SUMMARY = {
     { label: 'Resource person effectiveness', value: 4.8 },
     { label: 'Venue and logistics',           value: 4.3 },
   ],
+};
+/**
+ * Feedback collected per session, from the mobile app. dist = number of 5, 4, 3, 2 and 1 star ratings.
+ * Sessions that have not happened yet have no entry.
+ */
+export const SESSION_FEEDBACK = {
+  1: { eligible: 36, dist: [25, 5, 1, 0, 0], criteria: { content: 4.7, speaker: 4.9, venue: 4.4 }, recommend: 97 },
+  2: { eligible: 36, dist: [16, 10, 3, 0, 0], criteria: { content: 4.5, speaker: 4.6, venue: 4.3 }, recommend: 93 },
+  3: { eligible: 36, dist: [9, 2, 1, 0, 0],  criteria: { content: 4.8, speaker: 4.7, venue: 4.0 }, recommend: 92 },
 };
 export const FEEDBACK_COMMENTS = [
   { id: 1, name: 'Maria Santos',   session: 'Rubber Tapping Techniques',          rating: 5, date: 'Jun 18, 2025', comment: 'The demo on tapping depth was the most useful part. I can use it right away with the farmers I supervise.' },

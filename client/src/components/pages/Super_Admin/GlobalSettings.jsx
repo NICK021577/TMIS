@@ -4,6 +4,7 @@ import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
 import { ActionIcon, Button, Icon, Modal, Panel, PanelTitle, Switch, inputCls, textareaCls } from '../../ui';
 import { usePlatform } from '../../../hooks/usePlatform';
 import { SEED_SETTINGS } from '../../../data/platformData';
+import { ORG_TYPES } from '../../../lib/verification';
 import { SaveBar, SettingRow, SettingsLayout, same, useDraft } from '../../settings/SettingsKit';
 
 /* ───────────── shared pieces ───────────── */
@@ -44,31 +45,32 @@ function RegistrationSection() {
   const { settings, updateSettings, notify } = usePlatform();
   const { draft, setDraft, dirty, reset } = useDraft(settings.registration);
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
-  const setDoc = (id, patch) => set({ docs: draft.docs.map((d) => (d.id === id ? { ...d, ...patch } : d)) });
   const types = [['pdf', 'PDF'], ['jpg', 'JPG'], ['png', 'PNG']];
   const noType = !Object.values(draft.fileTypes).some(Boolean);
-  const emptyDoc = draft.docs.some((d) => !d.label.trim());
   const save = () => { updateSettings({ registration: draft }, 'Registration requirements'); notify?.('Registration requirements saved'); };
 
   return (
     <div className="space-y-4">
       <Panel>
-        <PanelTitle title="Required documents" subtitle="What an agency must attach in the Documents step of Register your agency" />
-        <ul className="space-y-2">
-          {draft.docs.map((d) => (
-            <li key={d.id} className="glass-inset flex items-center gap-3 rounded-2xl px-4 py-3">
-              <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-white text-brand-600"><Icon name="file" size={16} /></span>
-              <input value={d.label} onChange={(e) => setDoc(d.id, { label: e.target.value })} aria-label="Document name" className="h-9 min-w-0 flex-1 rounded-lg bg-transparent px-2 text-[13px] font-medium text-ink-950 outline-none focus:bg-white" />
-              <label className="flex items-center gap-2 text-xs text-ink-600">
-                <Switch checked={d.required} onChange={(v) => setDoc(d.id, { required: v })} label={`${d.label} required`} />
-                {d.required ? 'Required' : 'Optional'}
-              </label>
-              <ActionIcon icon="trash" tone="danger" label="Remove document" onClick={() => set({ docs: draft.docs.filter((x) => x.id !== d.id) })} />
-            </li>
+        <PanelTitle title="Verification documents by organization type" subtitle="The Documents step of Register your agency adapts to the type an applicant picks. These rules are fixed by the verification policy." />
+        <div className="space-y-3">
+          {ORG_TYPES.map((t) => (
+            <div key={t.value} className="glass-inset rounded-2xl p-4">
+              <div className="mb-2 flex items-center gap-2.5">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white text-brand-600"><Icon name={t.icon} size={15} /></span>
+                <div><strong className="block text-[13px] font-medium text-ink-950">{t.value}</strong><small className="text-xs text-ink-500">{t.desc}</small></div>
+              </div>
+              <dl className="grid gap-x-6 gap-y-2 text-[13px] sm:grid-cols-2">
+                <div><dt className="text-[11px] text-ink-500">1 · Authority to represent (required)</dt><dd className="text-ink-900">{t.authority.options.join(' or ')}</dd></div>
+                <div><dt className="text-[11px] text-ink-500">2 · Proof of entity (required)</dt>
+                  <dd className="text-ink-900">{t.entity.options.join(', ')}{t.entity.autoDomain && <span className="mt-0.5 block text-xs text-emerald-700">Auto-verified for {t.entity.autoLabel} emails</span>}</dd></div>
+                <div><dt className="text-[11px] text-ink-500">3 · Valid ID of contact person (required)</dt><dd className="text-ink-900">Agency / employee ID or government-issued ID</dd></div>
+                <div><dt className="text-[11px] text-ink-500">4 · MOA or partnership document</dt><dd className="text-ink-900">Optional, so legal sign-off never blocks onboarding</dd></div>
+              </dl>
+            </div>
           ))}
-        </ul>
-        <Button variant="ghost" size="sm" icon="plus" className="mt-3" onClick={() => set({ docs: [...draft.docs, { id: `doc-${Date.now()}`, label: 'New document', required: true }] })}>Add document</Button>
-        {emptyDoc && <p className="mt-2 flex items-center gap-1.5 text-xs text-danger"><Icon name="alert" size={13} />Every document needs a name.</p>}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-ink-500">Verification gives UniFyle an audit trail under the Data Privacy Act of 2012 before an Agency Administrator can manage trainee personal data. Until approval an agency can explore and draft; live enrollment and certificates stay locked.</p>
       </Panel>
 
       <Panel>
@@ -87,12 +89,7 @@ function RegistrationSection() {
             {[2, 5, 10, 20].map((n) => <option key={n} value={n}>{n} MB</option>)}
           </select>
         </SettingRow>
-      </Panel>
-
-      <Panel>
-        <PanelTitle title="Agency types" subtitle="Choices shown in the registration form and when creating an agency" />
-        <ChipEditor items={draft.agencyTypes} onChange={(agencyTypes) => set({ agencyTypes })} placeholder="Add an agency type" />
-        <SaveBar dirty={dirty && !noType && !emptyDoc && draft.agencyTypes.length > 0} onSave={save} onDiscard={reset} />
+        <SaveBar dirty={dirty && !noType} onSave={save} onDiscard={reset} />
       </Panel>
     </div>
   );

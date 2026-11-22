@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Icon } from './Icon';
+import { Overlay } from './Overlay';
 
 /** Modal — centered glass card with a soft blurred backdrop. Closes on Esc. */
 export function Modal({ title, subtitle, onClose, children, footer, width = 560 }) {
@@ -10,6 +11,7 @@ export function Modal({ title, subtitle, onClose, children, footer, width = 560 
   }, [onClose]);
 
   return (
+    <Overlay>
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div className="glass-backdrop absolute inset-0 animate-fade-in" onClick={onClose} aria-hidden="true" />
       <div
@@ -32,5 +34,6 @@ export function Modal({ title, subtitle, onClose, children, footer, width = 560 
         {footer && <footer className="flex flex-wrap items-center justify-between gap-2 px-6 pb-5 pt-3">{footer}</footer>}
       </div>
     </div>
+    </Overlay>
   );
 }

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon, Logo } from '../../ui';
+import { FILE_RULES, ORG_TYPES, docSlots } from '../../../lib/verification';
 
 /* ───────────── constants ───────────── */
 
@@ -11,9 +12,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^(09|\+639)\d{9}$/;
 const NAME_PATTERN = /^[\p{L}][\p{L}\s.'-]*$/u;
 
-const MAX_MB = 5;
-const ACCEPT = '.pdf,.jpg,.jpeg,.png';
-const ACCEPT_EXT = ['pdf', 'jpg', 'jpeg', 'png'];
+const { maxMb: MAX_MB, accept: ACCEPT, ext: ACCEPT_EXT } = FILE_RULES;
 
 const STEPS = [
   { id: 'agency',    label: 'Agency' },
@@ -22,25 +21,11 @@ const STEPS = [
   { id: 'review',    label: 'Review' },
 ];
 
-const TYPES = [
-  { value: 'Government', icon: 'building', desc: 'National or local government office' },
-  { value: 'Academic',   icon: 'award',    desc: 'University, college or research institute' },
-  { value: 'Private',    icon: 'users',    desc: 'Company or private organization' },
-  { value: 'Non-profit', icon: 'sparkle',  desc: 'NGO, foundation or cooperative' },
-];
-
 const REGIONS = {
   Luzon:    ['NCR', 'CAR', 'Region I', 'Region II', 'Region III', 'Region IV-A', 'MIMAROPA', 'Region V'],
   Visayas:  ['Region VI', 'Region VII', 'Region VIII'],
   Mindanao: ['Region IX', 'Region X', 'Region XI', 'Region XII', 'Region XIII', 'BARMM'],
 };
-
-// Documents the Super Admin needs to verify an agency (Chapter 1 — onboarding).
-const DOCS = [
-  { id: 'authLetter', label: 'Authorization letter', hint: 'Signed by the agency head, naming the contact person.' },
-  { id: 'moa',        label: 'Memorandum of Agreement (MOA)', hint: 'The signed agreement with the institution.' },
-  { id: 'validId',    label: 'Valid ID of the contact person', hint: 'A government or agency-issued ID.' },
-];
 
 const EMPTY = {
   agency: '', acronym: '', type: '', region: '',
@@ -138,13 +123,46 @@ function ChoiceCard({ checked, icon, title, desc, onSelect }) {
   );
 }
 
-/** Document upload — click or drag a file onto the card. */
-function DocUpload({ doc, file, error, onPick, onClear }) {
+/** One supporting-document slot: pick which document it is, then click or drag a file onto the card. */
+function DocUpload({ doc, file, kind, onKind, error, onPick, onClear }) {
   const ref = useRef(null);
   const [over, setOver] = useState(false);
+  const optional = !doc.required && !doc.auto;
+
+  const header = (
+    <div className="flex items-center gap-2">
+      <span className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full bg-ink-100 text-[11px] font-medium text-ink-600">{doc.n}</span>
+      <strong className="text-[13px] font-medium text-ink-950">{doc.short}</strong>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${optional ? 'bg-ink-100 text-ink-500' : 'bg-brand-50 text-brand-700'}`}>{optional ? 'Optional' : 'Required'}</span>
+    </div>
+  );
+
+  if (doc.auto) {
+    return (
+      <section className="space-y-2">
+        {header}
+        <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+          <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-white text-emerald-600 shadow-sm"><Icon name="check" size={19} /></span>
+          <span className="min-w-0 flex-1">
+            <strong className="block text-sm font-medium text-ink-950">Verified by your official email</strong>
+            <small className="text-xs text-ink-600">Your {doc.autoLabel} address stands in for the {doc.label.toLowerCase()}. We’ll confirm it when you verify your email.</small>
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <div className="space-y-2">
+    <section className="space-y-2.5">
+      {header}
+      {doc.options && doc.options.length > 1 && (
+        <div role="radiogroup" aria-label={`Which document for ${doc.short}`} className="flex flex-wrap gap-1.5">
+          {doc.options.map((o) => (
+            <button key={o} type="button" role="radio" aria-checked={kind === o} onClick={() => onKind(doc.id, o)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${kind === o ? 'border-brand-500 bg-brand-50 font-medium text-brand-800' : 'border-ink-200 bg-white text-ink-600 hover:border-ink-300'}`}>{o}</button>
+          ))}
+        </div>
+      )}
       <input
         ref={ref} id={doc.id} type="file" accept={ACCEPT} className="sr-only"
         onChange={(e) => { onPick(doc.id, e.target.files?.[0]); e.target.value = ''; }}
@@ -154,12 +172,12 @@ function DocUpload({ doc, file, error, onPick, onClear }) {
         <div className="flex items-center gap-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
           <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-white text-emerald-600 shadow-sm"><Icon name="file" size={19} /></span>
           <span className="min-w-0 flex-1">
-            <small className="block text-[11px] font-medium text-emerald-700">{doc.label}</small>
+            <small className="block text-[11px] font-medium text-emerald-700">{kind || doc.label}</small>
             <strong className="block truncate text-sm font-medium text-ink-950">{file.name}</strong>
             <small className="text-xs text-ink-500">{formatSize(file.size)}</small>
           </span>
           <button type="button" onClick={() => ref.current?.click()} className="text-xs font-medium text-brand-700 hover:text-brand-900">Replace</button>
-          <button type="button" onClick={() => onClear(doc.id)} aria-label={`Remove ${doc.label}`} className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-white hover:text-ink-950">
+          <button type="button" onClick={() => onClear(doc.id)} aria-label={`Remove ${doc.short}`} className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 hover:bg-white hover:text-ink-950">
             <Icon name="close" size={15} />
           </button>
         </div>
@@ -177,7 +195,7 @@ function DocUpload({ doc, file, error, onPick, onClear }) {
         >
           <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-ink-100 text-ink-600"><Icon name="upload" size={19} /></span>
           <span className="min-w-0 flex-1">
-            <strong className="block text-sm font-medium text-ink-950">{doc.label} <span className="text-danger">*</span></strong>
+            <strong className="block text-sm font-medium text-ink-950">{doc.label}</strong>
             <small className="mt-0.5 block text-xs text-ink-500">{doc.hint}</small>
           </span>
           <span className="hidden rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 sm:block">Choose file</span>
@@ -188,7 +206,7 @@ function DocUpload({ doc, file, error, onPick, onClear }) {
           <Icon name="alert" size={13} />{error}
         </p>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -217,10 +235,12 @@ export default function RegisterAgency({ notify }) {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(EMPTY);
   const [files, setFiles] = useState({});
+  const [kinds, setKinds] = useState({});   // which document was uploaded per slot
   const [errors, setErrors] = useState({});
   const [ref, setRef] = useState(null);
 
   const set = (name, value) => {
+    if (name === 'type') { setKinds({}); setFiles({}); }   // the documents depend on the organization type
     setForm((p) => ({ ...p, [name]: value }));
     if (errors[name]) setErrors((p) => ({ ...p, [name]: undefined }));
   };
@@ -236,6 +256,8 @@ export default function RegisterAgency({ notify }) {
     setFiles((p) => ({ ...p, [id]: file }));
     setErrors((p) => ({ ...p, [id]: undefined }));
   }
+  const slots = docSlots(form.type, form.email);
+  const kindOf = (slot) => kinds[slot.id] ?? slot.options?.[0];
   const clearFile = (id) => setFiles((p) => { const n = { ...p }; delete n[id]; return n; });
 
   function validate(i) {
@@ -243,7 +265,7 @@ export default function RegisterAgency({ notify }) {
     if (i === 0) {
       if (!form.agency.trim()) e.agency = 'Enter the agency name.';
       if (!form.acronym.trim()) e.acronym = 'Enter the acronym.';
-      if (!form.type) e.type = 'Choose the type of agency.';
+      if (!form.type) e.type = 'Choose the type of organization.';
       if (!form.region) e.region = 'Choose your region.';
     }
     if (i === 1) {
@@ -258,7 +280,7 @@ export default function RegisterAgency({ notify }) {
       if (!phone) e.phone = 'Enter a contact number.';
       else if (!PHONE_PATTERN.test(phone)) e.phone = 'Use 09XX XXX XXXX or +63 9XX XXX XXXX.';
     }
-    if (i === 2) DOCS.forEach((d) => { if (!files[d.id]) e[d.id] = `Attach the ${d.label}.`; });
+    if (i === 2) slots.forEach((d) => { if (d.required && !d.auto && !files[d.id]) e[d.id] = `${d.short} is required. Attach a file.`; });
     if (i === 3 && !form.confirm) e.confirm = 'Please confirm before submitting.';
     return e;
   }
@@ -295,7 +317,7 @@ export default function RegisterAgency({ notify }) {
             <span className="text-ink-500">Reference</span><strong className="font-medium tabular-nums text-ink-950">{ref}</strong>
           </div>
           <ol className="mx-auto mt-10 grid max-w-[460px] gap-4 text-left">
-            {[['Pending', 'We received your application.', true], ['Under review', 'An administrator checks your documents.', false], ['Approved', 'Your workspace is created and you become its Agency Administrator.', false]].map(([t, d, on]) => (
+            {[['Pending verification', 'We received your application. You can explore your workspace and draft activities while we review.', true], ['Under review', 'An administrator checks your documents.', false], ['Approved', 'Live trainee enrollment and certificate issuance unlock, and you become the Agency Administrator.', false]].map(([t, d, on]) => (
               <li key={t} className="flex items-start gap-3.5">
                 <span className={`mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[11px] ${on ? 'bg-emerald-500 text-white' : 'border border-ink-300 bg-white text-ink-400'}`}>{on ? <Icon name="check" size={13} /> : ''}</span>
                 <span><strong className="block text-sm font-medium text-ink-950">{t}</strong><small className="text-[13px] text-ink-500">{d}</small></span>
@@ -311,7 +333,7 @@ export default function RegisterAgency({ notify }) {
   const titles = [
     ['Tell us about your agency', 'This is how your agency will appear to its staff and participants.'],
     ['Who should we contact?', 'This person becomes the first Agency Administrator once you’re approved.'],
-    ['Upload your supporting documents', `PDF, JPG or PNG, up to ${MAX_MB} MB each. All three are required to verify your agency.`],
+    ['Upload your supporting documents', `What we ask for depends on your organization type. PDF, JPG or PNG, up to ${MAX_MB} MB each.`],
     ['Review your application', 'Check everything below. You can still change any section.'],
   ][step];
 
@@ -353,9 +375,9 @@ export default function RegisterAgency({ notify }) {
                 </div>
 
                 <div className="space-y-2" id="type">
-                  <span className="block text-[13px] font-medium text-ink-800">What type of agency is it?</span>
-                  <div role="radiogroup" aria-label="Agency type" className="grid gap-3 sm:grid-cols-2">
-                    {TYPES.map((t) => (
+                  <span className="block text-[13px] font-medium text-ink-800">What type of organization is it?</span>
+                  <div role="radiogroup" aria-label="Organization type" className="grid gap-3 sm:grid-cols-2">
+                    {ORG_TYPES.map((t) => (
                       <ChoiceCard key={t.value} checked={form.type === t.value} icon={t.icon} title={t.value} desc={t.desc} onSelect={() => set('type', t.value)} />
                     ))}
                   </div>
@@ -387,8 +409,15 @@ export default function RegisterAgency({ notify }) {
             )}
 
             {step === 2 && (
-              <div className="space-y-4">
-                {DOCS.map((d) => <DocUpload key={d.id} doc={d} file={files[d.id]} error={errors[d.id]} onPick={pickFile} onClear={clearFile} />)}
+              <div className="space-y-6">
+                <div className="flex items-start gap-3 rounded-2xl bg-brand-50/70 p-4 ring-1 ring-brand-100">
+                  <Icon name="lock" size={17} className="mt-0.5 flex-shrink-0 text-brand-700" />
+                  <p className="text-[13px] leading-relaxed text-ink-700">
+                    <strong className="font-medium text-ink-950">{form.type}: </strong>
+                    we verify every organization to keep an audit trail under the Data Privacy Act of 2012, before an administrator can manage trainee personal data.
+                  </p>
+                </div>
+                {slots.map((d) => <DocUpload key={d.id} doc={d} file={files[d.id]} kind={kindOf(d)} onKind={(id, v) => setKinds((k) => ({ ...k, [id]: v }))} error={errors[d.id]} onPick={pickFile} onClear={clearFile} />)}
               </div>
             )}
 
@@ -403,7 +432,7 @@ export default function RegisterAgency({ notify }) {
                   <Row k="Email" v={form.email} />
                 </ReviewCard>
                 <ReviewCard title="Documents" onEdit={() => jump(2)}>
-                  {DOCS.map((d) => <Row key={d.id} k={d.label} v={files[d.id]?.name} />)}
+                  {slots.map((d) => <Row key={d.id} k={d.short} v={d.auto ? `Verified by ${d.autoLabel} email` : files[d.id] ? `${kindOf(d)}: ${files[d.id].name}` : d.required ? '' : 'Not provided (optional)'} />)}
                 </ReviewCard>
                 <div>
                   <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-700">
@@ -415,16 +444,16 @@ export default function RegisterAgency({ notify }) {
               </>
             )}
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center justify-between gap-3 pt-2">
+              {step > 0 ? (
+                <button type="button" onClick={back} className="inline-flex h-12 items-center gap-1.5 rounded-xl px-4 text-sm font-medium text-ink-600 transition hover:bg-white hover:text-ink-950">
+                  <Icon name="back" size={15} />Back
+                </button>
+              ) : <span />}
               <button type="submit" className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand-700 px-7 text-sm font-medium text-white shadow-[0_10px_24px_rgba(47,95,204,0.28)] transition hover:bg-brand-800 active:translate-y-px">
                 {step === STEPS.length - 1 ? 'Submit application' : 'Continue'}
                 <Icon name="arrow" size={16} />
               </button>
-              {step > 0 && (
-                <button type="button" onClick={back} className="inline-flex h-12 items-center gap-1.5 rounded-xl px-4 text-sm font-medium text-ink-600 transition hover:bg-white hover:text-ink-950">
-                  <Icon name="back" size={15} />Back
-                </button>
-              )}
             </div>
           </form>
         </div>

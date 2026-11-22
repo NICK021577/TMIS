@@ -9,13 +9,15 @@ import {
 } from '../../lib/brand';
 
 function ParticipantPreview() {
-  const { profile } = useStore();
+  const { profile, cover } = useStore();
   const [subscribed, setSubscribed] = useState(false);
   return (
     <div>
       <p className="mb-2 text-[11px] text-ink-400">LIVE PARTICIPANT PREVIEW</p>
       <div className="mx-auto max-w-[260px] overflow-hidden rounded-[26px] bg-white shadow-[0_14px_34px_rgba(70,100,200,0.18)] ring-1 ring-black/5">
-        <div className="h-20 bg-gradient-to-br from-brand-900 to-brand-500" />
+        {cover
+          ? <img src={cover} alt="" className="h-20 w-full object-cover" />
+          : <div className="h-20 bg-gradient-to-br from-brand-900 to-brand-500" />}
         <div className="px-4 pb-4">
           <AgencyMark size={48} className="-mt-6 ring-4 ring-white" />
           <h3 className="mt-2 text-[13px] font-medium leading-snug text-ink-950">{profile.name}</h3>
@@ -38,26 +40,28 @@ function ParticipantPreview() {
 }
 
 export default function BrandingTab({ readOnly, notify }) {
-  const { profile, setProfile, brand, setBrand, logo, setLogo } = useStore();
+  const { profile, setProfile, brand, setBrand, logo, setLogo, cover, setCover } = useStore();
   const confirm = useConfirm();
   const fileRef = useRef(null);
+  const coverRef = useRef(null);
+  const [coverError, setCoverError] = useState('');
   const [hex, setHex] = useState(() => hslToHex(brand.h, brand.s, clampShade(brand.l)));
   const [name, setName] = useState(profile.name);
   const [desc, setDesc] = useState(profile.description);
 
   // Colors and the logo preview live, so the last saved state is kept to discard back to.
-  const [saved, setSaved] = useState({ brand, logo, name: profile.name, desc: profile.description });
-  const dirty = !same(brand, saved.brand) || logo !== saved.logo || name !== saved.name || desc !== saved.desc;
-  const latest = useRef({ dirty, saved, setBrand, setLogo });
-  latest.current = { dirty, saved, setBrand, setLogo };
-  const revert = () => { setBrand(saved.brand); setLogo(saved.logo); setName(saved.name); setDesc(saved.desc); setHex(hslToHex(saved.brand.h, saved.brand.s, clampShade(saved.brand.l))); };
+  const [saved, setSaved] = useState({ brand, logo, cover, name: profile.name, desc: profile.description });
+  const dirty = !same(brand, saved.brand) || logo !== saved.logo || cover !== saved.cover || name !== saved.name || desc !== saved.desc;
+  const latest = useRef({ dirty, saved, setBrand, setLogo, setCover });
+  latest.current = { dirty, saved, setBrand, setLogo, setCover };
+  const revert = () => { setBrand(saved.brand); setLogo(saved.logo); setCover(saved.cover); setCoverError(''); setName(saved.name); setDesc(saved.desc); setHex(hslToHex(saved.brand.h, saved.brand.s, clampShade(saved.brand.l))); };
   const save = () => {
     setProfile({ ...profile, name, description: desc });
-    setSaved({ brand, logo, name, desc });
+    setSaved({ brand, logo, cover, name, desc });
     notify?.('Branding saved. Your sidebar and participant pages are updated');
   };
   // Leaving the tab without saving drops the unsaved preview.
-  useEffect(() => () => { const l = latest.current; if (l.dirty) { l.setBrand(l.saved.brand); l.setLogo(l.saved.logo); } }, []);
+  useEffect(() => () => { const l = latest.current; if (l.dirty) { l.setBrand(l.saved.brand); l.setLogo(l.saved.logo); l.setCover(l.saved.cover); } }, []);
 
   const applyBrand = (next) => {
     const merged = { ...brand, ...next };
@@ -79,6 +83,17 @@ export default function BrandingTab({ readOnly, notify }) {
     e.target.value = '';
   };
 
+  const onCover = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setCoverError('Use a PNG, JPG or WebP image.'); return; }
+    if (file.size > 5 * 1048576) { setCoverError('The image is larger than 5 MB.'); return; }
+    setCoverError('');
+    setCover(URL.createObjectURL(file));
+    notify?.('Cover photo previewed. Save to keep it');
+  };
+
   const swatches = scale(brand);
 
   return (
@@ -98,6 +113,23 @@ export default function BrandingTab({ readOnly, notify }) {
             <input ref={fileRef} type="file" accept="image/png,image/svg+xml" hidden onChange={onFile} />
             <Button variant="secondary" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>{logo ? 'Replace logo' : 'Upload logo'}</Button>
             {logo && <Button variant="ghost" size="sm" onClick={async () => { if (await confirm({ tone: 'danger', title: 'Remove the agency logo?', message: 'The sidebar will show your agency’s initials instead.', detail: 'Save to apply the change.', confirmLabel: 'Remove logo' })) { setLogo(null); } }}>Remove</Button>}
+          </div>
+
+          {/* Cover photo */}
+          <div className="glass-inset space-y-3 rounded-2xl p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <strong className="block text-[13px] font-medium text-ink-950">Cover photo</strong>
+                <p className="text-xs text-ink-500">Wide image shown at the top of your public agency page. PNG, JPG or WebP, up to 5 MB. About 1600 × 500 works best.</p>
+              </div>
+              <input ref={coverRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={onCover} />
+              <Button variant="secondary" size="sm" icon="upload" onClick={() => coverRef.current?.click()}>{cover ? 'Replace cover' : 'Upload cover'}</Button>
+              {cover && <Button variant="ghost" size="sm" onClick={async () => { if (await confirm({ tone: 'danger', title: 'Remove the cover photo?', message: 'Your public page will go back to the default brand-color banner.', detail: 'Save to apply the change.', confirmLabel: 'Remove cover' })) { setCover(null); setCoverError(''); } }}>Remove</Button>}
+            </div>
+            <div className="relative h-28 overflow-hidden rounded-xl bg-gradient-to-br from-brand-900 via-brand-700 to-brand-400 sm:h-32">
+              {cover ? <img src={cover} alt="Cover photo preview" className="h-full w-full object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs text-white/80">Default banner. Upload a cover to replace it.</span>}
+            </div>
+            {coverError && <p className="flex items-center gap-1.5 text-xs text-danger"><Icon name="alert" size={13} />{coverError}</p>}
           </div>
 
           <Field label="Display name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field>
