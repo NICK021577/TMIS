@@ -46,7 +46,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [shake, setShake] = useState(false);
-  const [pending, setPending] = useState(null);   // signed in with a temporary password: { token, current }
+  const [pending, setPending] = useState(null);   // signed in with a temporary password: { current }
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
 
@@ -65,8 +65,9 @@ export default function Login() {
   }
 
   /** Saves the session and opens the right first screen. */
-  function finish(token, user) {
-    login({ name: user.name, email: user.email, role: user.role, agency: user.agency, menus: user.menus, token });
+  function finish(user) {
+    // the session token itself lives in the httpOnly cookie the server set; only the profile is kept here
+    login({ id: user.id, name: user.name, email: user.email, role: user.role, agency: user.agency, agencyName: user.agencyName, menus: user.menus });
     if (user.role === 'Super Admin') { navigate('/platform'); return; }
     // First sign-in for an agency on this device: welcome them on their public page.
     let first = false;
@@ -81,8 +82,8 @@ export default function Login() {
     if (newPw !== confirmPw) { setErrors({ form: 'The two passwords do not match.' }); setShake(true); return; }
     setLoading(true);
     try {
-      const { token, user } = await api('/auth/change-password', { method: 'POST', token: pending.token, body: { current: pending.current, next: newPw } });
-      finish(token, user);
+      const { session } = await api('/users/change-password', { method: 'POST', body: { current: pending.current, next: newPw } });
+      finish(session);
     } catch (err) {
       setErrors({ form: err.message });
       setShake(true);
@@ -102,10 +103,10 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const { token, user, mustResetPassword } = await api('/auth/login', { method: 'POST', body: { email: form.email.trim(), password: form.password } });
+      const { session, mustResetPassword } = await api('/users/login', { method: 'POST', body: { email: form.email.trim(), password: form.password, client: 'web' } });
       // A temporary password (given by an administrator) must be replaced before anything else
-      if (mustResetPassword) { setPending({ token, current: form.password }); return; }
-      finish(token, user);
+      if (mustResetPassword) { setPending({ current: form.password }); return; }
+      finish(session);
     } catch (err) {
       setErrors({ form: err.message });
       setShake(true);
