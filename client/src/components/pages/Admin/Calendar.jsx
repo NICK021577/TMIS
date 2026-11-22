@@ -6,7 +6,7 @@ import { Badge, Button, Callout, Drawer, Field, IconButton, KeyValue, Modal, Pan
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
 import CreateWizard from '../../activity/CreateWizard';
-import { ACTIVITY_TYPES, FUNDING, TODAY_ISO, peso } from '../../../data/mockData';
+import { ACTIVITY_TYPES, TODAY_ISO, peso } from '../../../data/mockData';
 import { MONTH_NAMES, buildEvents, formatRange, overlapsFor } from '../../../lib/budgetModel';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -21,8 +21,8 @@ const TYPE_COLOR = {
 const colorOf = (t) => TYPE_COLOR[t] ?? { chip: 'bg-white text-ink-700', dot: 'bg-ink-400' };
 
 function PlanModal({ onClose }) {
-  const { addPlan, notify } = useStore();
-  const [f, setF] = useState({ title: '', type: ACTIVITY_TYPES[0], funding: FUNDING[0], start: '', end: '', venue: '' });
+  const { addPlan, notify, fundingNames } = useStore();
+  const [f, setF] = useState({ title: '', type: ACTIVITY_TYPES[0], funding: fundingNames[0] ?? '', start: '', end: '', venue: '' });
   const ok = f.title.trim() && f.start && f.end && f.end >= f.start;
   return (
     <Modal title="Plan event" subtitle="Reserve dates on the annual calendar. Turn it into a full activity later." onClose={onClose} width={520}
@@ -31,7 +31,7 @@ function PlanModal({ onClose }) {
         <Field label="Title"><input className={inputCls} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} autoFocus /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Type"><select className={inputCls} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</select></Field>
-          <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => setF({ ...f, funding: e.target.value })}>{FUNDING.map((t) => <option key={t}>{t}</option>)}</select></Field>
+          <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => setF({ ...f, funding: e.target.value })}>{fundingNames.map((t) => <option key={t}>{t}</option>)}</select></Field>
           <Field label="Start"><input type="date" className={inputCls} value={f.start} onChange={(e) => setF({ ...f, start: e.target.value, end: f.end && f.end < e.target.value ? e.target.value : f.end })} /></Field>
           <Field label="End"><input type="date" min={f.start} className={inputCls} value={f.end} onChange={(e) => setF({ ...f, end: e.target.value })} /></Field>
         </div>
@@ -91,7 +91,7 @@ function EventDrawer({ event, events, isAdmin, onClose, onTurnInto }) {
 
 export default function Calendar() {
   const { role } = useAuth();
-  const { activities, items, plans, published, removePlan } = useStore();
+  const { activities, items, plans, published, removePlan, allFundingNames } = useStore();
   const isAdmin = role === 'Agency Administrator' || role === 'Super Admin';
 
   const [month, setMonth] = useState(5);
@@ -125,7 +125,7 @@ export default function Calendar() {
       <Panel className="mb-4 flex flex-wrap items-center gap-3 !px-5 !py-3">
         <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type"><option>All types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status"><option>All statuses</option>{['Planned', 'Upcoming', 'Ongoing', 'Completed'].map((t) => <option key={t}>{t}</option>)}</Select>
-        <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option>All funding</option>{FUNDING.map((t) => <option key={t}>{t}</option>)}</Select>
+        <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option>All funding</option>{allFundingNames.map((t) => <option key={t}>{t}</option>)}</Select>
         <ul className="ml-auto hidden flex-wrap gap-x-4 gap-y-1 text-xs text-ink-600 lg:flex">
           {ACTIVITY_TYPES.map((t) => <li key={t} className="flex items-center gap-1.5"><i className={`h-2 w-2 rounded-sm ${colorOf(t).dot}`} />{t}</li>)}
         </ul>

@@ -7,16 +7,15 @@ import { useStore } from '../../hooks/useStore';
 export default function CategoriesTab({ readOnly, notify }) {
   const { categories, setCategories, profile } = useStore();
   const [name, setName] = useState('');
-  const [qs, setQs] = useState('');
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
 
   const add = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    setCategories((l) => [...l, { id: Date.now(), name: name.trim(), questions: qs.trim(), archived: false }]);
+    setCategories((l) => [...l, { id: Date.now(), name: name.trim(), archived: false }]);
     notify?.(`Category “${name.trim()}” added`);
-    setName(''); setQs('');
+    setName('');
   };
   const rename = (c) => {
     if (draft.trim()) setCategories((l) => l.map((x) => (x.id === c.id ? { ...x, name: draft.trim() } : x)));
@@ -36,7 +35,6 @@ export default function CategoriesTab({ readOnly, notify }) {
         <input autoFocus className={`${inputCls} !h-8`} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => rename(c)} onKeyDown={(e) => e.key === 'Enter' && rename(c)} aria-label="Rename category" />
       ) : <strong className="font-medium text-ink-950">{c.name}</strong>),
     },
-    { key: 'questions', label: 'Extra questions', render: (c) => <span className="text-ink-600">{c.questions || 'None'}</span> },
     { key: 'status', label: 'Status', render: (c) => <Badge value={c.archived ? 'Archived' : 'Active'} tone={c.archived ? 'muted' : 'ok'} /> },
     {
       key: 'act', label: '', className: 'text-right',
@@ -61,9 +59,6 @@ export default function CategoriesTab({ readOnly, notify }) {
           <PanelTitle title="Add a category" />
           <form onSubmit={add} className="space-y-4">
             <Field label="Name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Nursery operator" /></Field>
-            <Field label="Extra questions (optional)" hint="Separate with semicolons, e.g. Rubber farm area; Years of experience">
-              <input className={inputCls} value={qs} onChange={(e) => setQs(e.target.value)} />
-            </Field>
             <Button type="submit" icon="plus" disabled={!name.trim()}>Add category</Button>
           </form>
         </Panel>

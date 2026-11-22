@@ -6,6 +6,7 @@ import { Logo } from '../../ui/Logo';
 import RotatingText from '../../ui/RotatingText';
 import ForgotPasswordModal from '../../modals/ForgotPasswordModal';
 import { welcomedKey } from '../Public/AgencyPage';
+import { api } from '../../../lib/api';
 
 const YEAR = new Date().getFullYear();
 const FEATURES = ['Plan Activities', 'Track Attendance', 'Manage Budgets', 'Collect Feedback', 'Issue Certificates', 'Report Impact'];
@@ -45,6 +46,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [forgot, setForgot] = useState(false);
   const [shake, setShake] = useState(false);
+  const [pending, setPending] = useState(null);   // signed in with a temporary password: { token, current }
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -60,14 +64,31 @@ export default function Login() {
     return next;
   }
 
-  // TEMPORARY: skips sign-in and opens the Super Admin console. Remove before release.
-  function enterSuperAdmin() {
-    login({
-      name:  'Dr. Elena Cruz',
-      email: 'superadmin@unifyle.gov.ph',
-      role:  'Super Admin',
-    });
-    navigate('/platform');
+  /** Saves the session and opens the right first screen. */
+  function finish(token, user) {
+    login({ name: user.name, email: user.email, role: user.role, agency: user.agency, menus: user.menus, token });
+    if (user.role === 'Super Admin') { navigate('/platform'); return; }
+    // First sign-in for an agency on this device: welcome them on their public page.
+    let first = false;
+    try { first = !localStorage.getItem(welcomedKey(user.agency)); } catch { /* storage unavailable */ }
+    if (first) navigate(`/a/${user.agency.toLowerCase()}`, { state: { welcome: true } });
+    else navigate('/dashboard');
+  }
+
+  async function handleNewPassword(e) {
+    e.preventDefault();
+    if (newPw.length < 8) { setErrors({ form: 'Use at least 8 characters.' }); setShake(true); return; }
+    if (newPw !== confirmPw) { setErrors({ form: 'The two passwords do not match.' }); setShake(true); return; }
+    setLoading(true);
+    try {
+      const { token, user } = await api('/auth/change-password', { method: 'POST', token: pending.token, body: { current: pending.current, next: newPw } });
+      finish(token, user);
+    } catch (err) {
+      setErrors({ form: err.message });
+      setShake(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e) {
@@ -80,20 +101,17 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    // ── Simulated auth (replace with real API call) ──
-    await new Promise((r) => setTimeout(r, 800));
-    login({
-      name:   'Alexis Ramos',
-      email:  form.email.trim(),
-      role:   'Agency Administrator',
-      agency: 'PRRI',
-    });
-    setLoading(false);
-    // First sign-in for an agency on this device: welcome them on their public page.
-    let first = false;
-    try { first = !localStorage.getItem(welcomedKey('PRRI')); } catch { /* storage unavailable */ }
-    if (first) navigate('/a/prri', { state: { welcome: true } });
-    else navigate('/dashboard');
+    try {
+      const { token, user, mustResetPassword } = await api('/auth/login', { method: 'POST', body: { email: form.email.trim(), password: form.password } });
+      // A temporary password (given by an administrator) must be replaced before anything else
+      if (mustResetPassword) { setPending({ token, current: form.password }); return; }
+      finish(token, user);
+    } catch (err) {
+      setErrors({ form: err.message });
+      setShake(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inputCls =
@@ -140,13 +158,42 @@ export default function Login() {
             className={`glass-strong mx-auto w-full max-w-[460px] animate-rise rounded-[24px] p-7 sm:p-9 lg:mx-0 lg:justify-self-end ${shake ? 'animate-shake' : ''}`}
           >
             <div className="mb-7">
-              <h1 className="text-[26px] font-medium leading-tight tracking-[-0.5px] text-ink-950">Welcome back</h1>
+              <h1 className="text-[26px] font-medium leading-tight tracking-[-0.5px] text-ink-950">{pending ? 'Choose your password' : 'Welcome back'}</h1>
               <p className="mt-2 text-sm leading-relaxed text-ink-600">
-                Sign in to access your dashboard and continue where you left off.
+                {pending ? 'You signed in with a temporary password. Set your own to continue.' : 'Sign in to access your dashboard and continue where you left off.'}
               </p>
             </div>
 
+            {pending ? (
+              <form onSubmit={handleNewPassword} className="space-y-5" noValidate>
+                {errors.form && (
+                  <p role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-danger ring-1 ring-red-200">
+                    <Icon name="alert" size={15} />{errors.form}
+                  </p>
+                )}
+                <Field id="new-password" label="New password" icon="lock">
+                  <input id="new-password" type={showPass ? 'text' : 'password'} value={newPw} onChange={(e) => { setNewPw(e.target.value); setErrors({}); }} autoFocus autoComplete="new-password" placeholder="At least 8 characters" className={`${inputCls} pr-4`} />
+                </Field>
+                <Field id="confirm-password" label="Confirm new password" icon="lock">
+                  <input id="confirm-password" type={showPass ? 'text' : 'password'} value={confirmPw} onChange={(e) => { setConfirmPw(e.target.value); setErrors({}); }} autoComplete="new-password" placeholder="Type it again" className={`${inputCls} pr-4`} />
+                </Field>
+                <label className="flex cursor-pointer select-none items-center gap-2.5 text-[13px] text-ink-600">
+                  <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="h-4 w-4 rounded accent-brand-600" />
+                  Show passwords
+                </label>
+                <button type="submit" disabled={loading} className="btn-sheen flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 text-sm font-medium text-white shadow-[0_12px_28px_rgba(47,95,204,0.35),inset_0_1px_0_rgba(255,255,255,0.25)] transition-all hover:-translate-y-px hover:bg-brand-800 disabled:cursor-wait disabled:opacity-80">
+                  {loading ? 'Saving…' : 'Save password and continue'}
+                </button>
+                <button type="button" onClick={() => { setPending(null); setNewPw(''); setConfirmPw(''); setErrors({}); }} className="block w-full text-center text-xs font-medium text-brand-700 hover:text-brand-900">Back to sign in</button>
+              </form>
+            ) : (
+            <>
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {errors.form && (
+                <p role="alert" className="flex items-center gap-2 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-danger ring-1 ring-red-200">
+                  <Icon name="alert" size={15} />{errors.form}
+                </p>
+              )}
               <Field id="email" label="Email address" icon="mail" error={errors.email}>
                 <input
                   id="email"
@@ -243,17 +290,8 @@ export default function Login() {
               <Icon name="building" size={16} />
               Register your agency
             </button>
-
-            {/* TEMP — remove before release */}
-            <button
-              type="button"
-              onClick={enterSuperAdmin}
-              className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-orange-400/70 bg-orange-50/60 text-[13px] font-medium text-orange-800 transition-colors hover:bg-orange-100/80"
-            >
-              <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white">Temp</span>
-              <Icon name="shield" size={16} />
-              Enter Super Admin console
-            </button>
+            </>
+            )}
 
             <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-ink-500">
               <Icon name="shield" size={14} />

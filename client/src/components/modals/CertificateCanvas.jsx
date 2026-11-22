@@ -12,7 +12,7 @@ export const CERT_STYLES = [
 export const CERT_COLORS = ['#2f5fcc', '#1f6e4b', '#a0603a', '#7a3fd0', '#c2410c', '#1d2433'];
 export const DEFAULT_TEMPLATE = {
   style: 'classic', accent: '#2f5fcc', title: 'Certificate of Completion', message: 'has successfully completed', showLogo: true,
-  signers: [{ name: '', role: 'Agency Administrator' }, { name: '', role: 'Activity Lead' }],
+  signers: [{ name: '', role: 'Agency Administrator', signature: null }, { name: '', role: 'Activity Lead', signature: null }],
 };
 
 const SERIF = 'Georgia, "Times New Roman", serif';
@@ -30,8 +30,17 @@ function Signers({ signers, accent, align = 'center' }) {
     <div style={{ display: 'flex', justifyContent: align === 'center' ? 'space-around' : 'flex-start', gap: '6cqw' }}>
       {signers.map((s, i) => (
         <div key={i} style={{ minWidth: '20cqw', textAlign: 'center' }}>
-          <div style={{ height: '3cqw', fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.9cqw', color: '#3a4256' }}>{s.name}</div>
-          <div style={{ borderTop: `0.15cqw solid ${accent}`, paddingTop: '0.7cqw', fontSize: '1.25cqw', color: '#6b7590', fontFamily: SANS }}>{s.role}</div>
+          {s.signature ? (
+            <div style={{ height: '5cqw', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+              <img src={s.signature} alt="" style={{ maxHeight: '5cqw', maxWidth: '18cqw', objectFit: 'contain' }} />
+            </div>
+          ) : (
+            <div style={{ height: '3cqw', fontFamily: SERIF, fontStyle: 'italic', fontSize: '1.9cqw', color: '#3a4256' }}>{s.name}</div>
+          )}
+          <div style={{ borderTop: `0.15cqw solid ${accent}`, paddingTop: '0.7cqw', fontSize: '1.25cqw', color: '#6b7590', fontFamily: SANS }}>
+            {s.signature && s.name && <div style={{ color: '#3a4256', fontWeight: 600 }}>{s.name}</div>}
+            {s.role}
+          </div>
         </div>
       ))}
     </div>

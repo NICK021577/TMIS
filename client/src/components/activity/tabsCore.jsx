@@ -2,7 +2,8 @@ import { useConfirm } from '../modals/confirmContext';
 import { useRef, useState } from 'react';
 import { ActionIcon, Avatar, Badge, Button, Cell, DataTable, Icon, Panel, PanelTitle, ProgressBar, Select } from '../ui';
 import { useStore } from '../../hooks/useStore';
-import { useEditing } from './editContext';
+import { useAccess, useEditing } from './editContext';
+import { ACTIVITY_ROLE_HELP } from '../../lib/activityAccess';
 import AddDayModal from '../modals/AddDayModal';
 import DocumentPreviewModal, { downloadDoc } from '../modals/DocumentPreviewModal';
 import ResourceModal from '../modals/ResourceModal';
@@ -13,8 +14,9 @@ import { estOf } from '../../lib/budgetModel';
 import { computeReadiness } from '../../lib/readiness';
 import AddParticipantModal from '../modals/AddParticipantModal';
 import AssignStaffModal from '../modals/AssignStaffModal';
+import PartnerSelect from '../shared/PartnerSelect';
 import {
-  AGENCY_ROLES, OBJECTIVES, OUTCOMES, ROLE_OPTIONS, WS,
+  OBJECTIVES, OUTCOMES, ROLE_OPTIONS, STAFF_ROLES, WS,
 } from '../../data/workspaceData';
 
 const Detail = ({ label, value }) => (
@@ -44,8 +46,10 @@ function BulletList({ title, items }) {
 
 export function OverviewTab({ activity, goTab, notify }) {
   const editing = useEditing();
-  const { sessions, items, profile, staffDays, resources, documents, feedbackForms, getDetails, setDetails, updateActivity } = useStore();
+  const { sessions, items, profile, staffDays, resources, documents, feedbackForms, getDetails, setDetails, updateActivity, fundingNames, partnersOf } = useStore();
   const d = getDetails(activity);
+  const partnerCount = partnersOf(activity.id).length;
+  const partnerText = partnerCount ? `${partnerCount} partner organization${partnerCount === 1 ? '' : 's'}` : '';
   const { checks, percent } = computeReadiness({ activity, details: d, sessions, staffDays, resources, documents, items, feedbackForms });
   const upNext = sessions.find((s) => s.status === 'Ongoing') ?? sessions.find((s) => s.status === 'Upcoming');
   const ordered = [...sessions].sort((a, b) => a.day - b.day || (a.period === b.period ? 0 : a.period === 'AM' ? -1 : 1));
@@ -81,9 +85,12 @@ export function OverviewTab({ activity, goTab, notify }) {
               <label className="block space-y-1.5"><span className="text-xs text-ink-600">Description</span>
                 <textarea rows={3} value={d.description} onChange={(e) => set({ description: e.target.value })} className="glass-input w-full rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-950" /></label>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block space-y-1.5"><span className="text-xs text-ink-600">Funding source</span><input className={lineInput} value={d.funding} onChange={(e) => set({ funding: e.target.value })} /></label>
+                <label className="block space-y-1.5"><span className="text-xs text-ink-600">Funding source</span>
+                  <select className={lineInput} value={d.funding} onChange={(e) => set({ funding: e.target.value })}>
+                    {(fundingNames.includes(d.funding) || !d.funding ? fundingNames : [d.funding, ...fundingNames]).map((n) => <option key={n}>{n}</option>)}
+                  </select></label>
                 <label className="block space-y-1.5"><span className="text-xs text-ink-600">Activity lead</span><input className={lineInput} value={d.lead} onChange={(e) => set({ lead: e.target.value })} /></label>
-                <label className="block space-y-1.5"><span className="text-xs text-ink-600">Participating agencies</span><input className={lineInput} value={d.agencies} onChange={(e) => set({ agencies: e.target.value })} placeholder="e.g. 6 partner organizations" /></label>
+                <div className="space-y-1.5"><span className="text-xs text-ink-600">Participating agencies</span><p className="flex h-10 items-center text-[13px] text-ink-700">{partnerText || 'None yet'}<small className="ml-2 text-xs text-ink-400">Manage them in Plan &amp; Agencies</small></p></div>
                 <div className="grid grid-cols-[96px_1fr] gap-3">
                   <label className="block space-y-1.5"><span className="text-xs text-ink-600">Target</span><input type="number" min="1" className={lineInput} value={activity.capacity} onChange={(e) => updateActivity(activity.id, { capacity: Math.max(1, Number(e.target.value) || 1) })} /></label>
                   <label className="block space-y-1.5"><span className="text-xs text-ink-600">Who</span><input className={lineInput} value={d.audience} onChange={(e) => set({ audience: e.target.value })} placeholder="e.g. rubber farmers" /></label>
@@ -98,7 +105,7 @@ export function OverviewTab({ activity, goTab, notify }) {
               <dl className="mt-5 grid gap-x-8 gap-y-4 sm:grid-cols-2">
                 <Detail label="Funding source" value={dash(d.funding)} />
                 <Detail label="Activity lead" value={dash(d.lead)} />
-                <Detail label="Participating agencies" value={dash(d.agencies)} />
+                <Detail label="Participating agencies" value={dash(partnerText)} />
                 <Detail label="Target participants" value={`${activity.capacity} ${d.audience}`} />
                 <Detail label="Topics" value={dash(d.topics)} />
                 <Detail label="Documentation" value={dash(d.documentation)} />
@@ -220,11 +227,15 @@ function EditableList({ title, subtitle, items, onChange, placeholder }) {
 export function PlanTab({ activity, notify }) {
   const editing = useEditing();
   const confirm = useConfirm();
-  const { getDetails, setDetails } = useStore();
+  const { getDetails, setDetails, partners, partnersOf, setPartnersOf } = useStore();
   const d = getDetails(activity);
   const set = (patch) => setDetails(activity.id, patch);
   const [flow, setFlow] = useState(false);
-  const [roles, setRoles] = useState(AGENCY_ROLES);
+  const roles = partnersOf(activity.id);
+  const partner = (id) => partners.find((p) => p.id === id);
+  const removePartner = async (r) => {
+    if (await confirm({ tone: 'danger', title: `Remove ${partner(r.partnerId)?.name ?? 'this partner'}?`, message: 'It will no longer be listed for this activity. It stays in your partner directory.', confirmLabel: 'Remove' })) setPartnersOf(activity.id, (l) => l.filter((x) => x.id !== r.id));
+  };
   const fileRef = useRef(null);
 
   const size = (b) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
@@ -238,17 +249,18 @@ export function PlanTab({ activity, notify }) {
   };
 
   const columns = [
-    { key: 'agency', label: 'Agency', render: (r) => <strong className="font-medium text-ink-950">{r.agency}</strong> },
+    { key: 'agency', label: 'Agency', render: (r) => <span><strong className="block font-medium text-ink-950">{partner(r.partnerId)?.name ?? 'Unknown partner'}</strong><small className="text-xs text-ink-500">{partner(r.partnerId)?.type}</small></span> },
     {
       key: 'role', label: 'Role in this activity',
       render: (r) => (
-        <Select value={r.role} aria-label={`Role of ${r.agency}`} disabled={!editing} className="disabled:cursor-not-allowed disabled:opacity-60"
-          onChange={(e) => { setRoles((l) => l.map((x) => (x.id === r.id ? { ...x, role: e.target.value } : x))); notify?.(`${r.agency} is now ${e.target.value}`); }}>
+        <Select value={r.role} aria-label={`Role of ${partner(r.partnerId)?.name}`} disabled={!editing} className="disabled:cursor-not-allowed disabled:opacity-60"
+          onChange={(e) => { setPartnersOf(activity.id, (l) => l.map((x) => (x.id === r.id ? { ...x, role: e.target.value } : x))); notify?.(`${partner(r.partnerId)?.name} is now ${e.target.value}`); }}>
           {ROLE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
         </Select>
       ),
     },
     { key: 'notes', label: 'Notes', render: (r) => <span className="text-ink-600">{r.notes}</span> },
+    { key: 'rm', label: '', className: 'text-right', render: (r) => editing && <ActionIcon icon="trash" tone="danger" label={`Remove ${partner(r.partnerId)?.name}`} onClick={() => removePartner(r)} /> },
   ];
   const field = 'glass-input h-10 w-full rounded-xl px-3.5 text-[13px] text-ink-950 placeholder:text-ink-400';
 
@@ -293,7 +305,14 @@ export function PlanTab({ activity, notify }) {
       </div>
       <Panel pad={false} className="overflow-hidden">
         <div className="p-5 pb-3"><PanelTitle title="Agency roles" subtitle="An agency can hold a different role in each activity, and one activity can involve several agencies" /></div>
-        <DataTable columns={columns} rows={roles} />
+        <DataTable columns={columns} rows={roles} empty="No partner agencies yet." />
+        {editing && (
+          <div className="border-t border-[var(--glass-divider)] p-4">
+            <span className="mb-1.5 block text-xs text-ink-600">Add a partner agency</span>
+            <PartnerSelect value={null} placeholder="Choose from your partners, or add a new one…" exclude={roles.map((r) => r.partnerId)} className="max-w-md"
+              onChange={(id) => { if (id != null) { setPartnersOf(activity.id, (l) => [...l, { id: Date.now(), partnerId: id, role: 'Collaborating', notes: '' }]); notify?.(`${partner(id)?.name ?? 'Partner'} added`); } }} />
+          </div>
+        )}
       </Panel>
     </div>
   );
@@ -302,6 +321,8 @@ export function PlanTab({ activity, notify }) {
 /* ── Sessions ─────────────────────────────────────────────────────── */
 export function SessionsTab({ notify }) {
   const editing = useEditing();
+  const access = useAccess();
+  const canMaterials = access.editing && access.level !== 'view';   // materials stay editable for roles that may only upload them
   const confirm = useConfirm();
   const { sessions, setSessions, staffDays } = useStore();
   const [adding, setAdding] = useState(false);
@@ -344,7 +365,7 @@ export function SessionsTab({ notify }) {
       </div>
       <DataTable columns={columns} rows={ordered} empty="No sessions yet." />
       {adding && <SessionModal days={staffDays} onSave={(s) => { setSessions((l) => [...l, s]); notify?.('Session added'); }} onClose={() => setAdding(false)} />}
-      {managing && <SessionMaterialsModal session={sessions.find((x) => x.id === managing.id) ?? managing} editing={editing} onChange={update} onClose={() => setManaging(null)} notify={notify} />}
+      {managing && <SessionMaterialsModal session={sessions.find((x) => x.id === managing.id) ?? managing} editing={canMaterials} onChange={update} onClose={() => setManaging(null)} notify={notify} />}
     </Panel>
   );
 }
@@ -361,6 +382,7 @@ export function StaffingTab({ notify }) {
     setDays((l) => l.map((d) => (d.n === n ? { ...d, staff: [...d.staff, { ...person, id: Date.now() }] } : d)));
     notify?.(`${person.name} assigned to Day ${n}`);
   };
+  const setRole = (n, id, role) => setDays((l) => l.map((d) => (d.n === n ? { ...d, staff: d.staff.map((x) => (x.id === id ? { ...x, role } : x)) } : d)));
   const unassign = (n, id) => setDays((l) => l.map((d) => (d.n === n ? { ...d, staff: d.staff.filter((s) => s.id !== id) } : d)));
   const removeDay = (n) => {
     setDays((l) => l.filter((d) => d.n !== n).map((d, i) => ({ ...d, n: i + 1 })));
@@ -372,7 +394,12 @@ export function StaffingTab({ notify }) {
 
   const columns = (n) => [
     { key: 'name', label: 'Name', render: (s) => <div className="flex items-center gap-3"><Avatar name={s.name.replace(/^(Ms|Mr|Dr)\.\s*/, '')} size="sm" /><strong className="font-medium text-ink-950">{s.name}</strong></div> },
-    { key: 'role', label: 'Role' },
+    {
+      key: 'role', label: 'Role in this activity',
+      render: (s) => (editing
+        ? <select value={s.role} onChange={(e) => setRole(n, s.id, e.target.value)} aria-label={`Role of ${s.name}`} className="glass-input h-8 rounded-full px-3 text-xs text-ink-800">{STAFF_ROLES.map((r) => <option key={r}>{r}</option>)}</select>
+        : s.role),
+    },
     { key: 'duty', label: 'Responsibility', render: (s) => <span className="text-ink-600">{s.duty}</span> },
     { key: 'status', label: 'Status', render: (s) => <Badge value={s.status} /> },
     { key: 'a', label: 'Actions', className: 'text-right', render: (s) => <div className="flex justify-start"><ActionIcon icon="trash" tone="danger" label="Remove from this day" disabled={!editing} onClick={async () => { if (await confirm({ tone: 'danger', title: `Remove ${s.name} from Day ${n}?`, message: 'They will no longer be assigned to this day.', confirmLabel: 'Remove' })) unassign(n, s.id); }} /></div> },
@@ -380,7 +407,15 @@ export function StaffingTab({ notify }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-ink-500">Staff are assigned per day. Facilitators run the activity; committee members hold organizing roles. The same person can be assigned on several days.</p>
+      <p className="text-xs text-ink-500">Staff are assigned per day. The role you give someone decides what they can edit in this activity. Everyone keeps seeing every module; modules they cannot edit are read-only. The same person can be assigned on several days.</p>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {ACTIVITY_ROLE_HELP.map(([r, text]) => (
+          <div key={r} className="glass-inset rounded-2xl px-4 py-3">
+            <strong className="block text-[13px] font-medium text-ink-950">{r}</strong>
+            <small className="text-xs leading-snug text-ink-500">{text}</small>
+          </div>
+        ))}
+      </div>
 
       {days.map((d) => (
         <Panel key={d.n} pad={false} className="overflow-hidden">

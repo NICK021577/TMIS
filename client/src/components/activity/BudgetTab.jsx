@@ -4,15 +4,15 @@ import { ActionIcon, Badge, Button, Callout, DataTable, Drawer, Field, Icon, Met
 import { useEditing } from './editContext';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../hooks/useStore';
-import { BUDGET_CATEGORIES, FUNDING, peso } from '../../data/mockData';
+import { BUDGET_CATEGORIES, peso } from '../../data/mockData';
 import { estOf } from '../../lib/budgetModel';
 
 const RESOURCES = ['None', 'Rubber seedlings', 'Fertilizer', 'Training kits', 'Venue'];
 const todayStr = '2025-06-18';
 
 function AddItemDrawer({ activityId, onClose }) {
-  const { addItem, notify } = useStore();
-  const [f, setF] = useState({ category: BUDGET_CATEGORIES[0], item: '', qty: 1, unit: 0, funding: FUNDING[0], resource: 'None' });
+  const { addItem, notify, fundingNames } = useStore();
+  const [f, setF] = useState({ category: BUDGET_CATEGORIES[0], item: '', qty: 1, unit: 0, funding: fundingNames[0] ?? '', resource: 'None' });
   const est = Number(f.qty) * Number(f.unit);
   return (
     <Drawer
@@ -30,7 +30,7 @@ function AddItemDrawer({ activityId, onClose }) {
         <Field label="Quantity"><input type="number" min="1" className={inputCls} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} /></Field>
         <Field label="Unit cost (₱)"><input type="number" min="0" className={inputCls} value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} /></Field>
       </div>
-      <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => setF({ ...f, funding: e.target.value })}>{FUNDING.map((c) => <option key={c}>{c}</option>)}</select></Field>
+      <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => setF({ ...f, funding: e.target.value })}>{fundingNames.map((c) => <option key={c}>{c}</option>)}</select></Field>
       <Field label="Linked resource"><select className={inputCls} value={f.resource} onChange={(e) => setF({ ...f, resource: e.target.value })}>{RESOURCES.map((c) => <option key={c}>{c}</option>)}</select></Field>
       <div className="glass-inset flex items-center justify-between rounded-2xl px-4 py-3 text-[13px]">
         <span className="text-ink-500">Allocated amount</span><strong className="font-medium text-ink-950">{peso(est || 0)}</strong>

@@ -57,6 +57,21 @@ export function PlatformProvider({ children, notify }) {
     notify?.(next === 'Suspended' ? `${acc.name} can no longer sign in` : `${acc.name} reactivated`);
   }, [log, notify]);
 
+  const toggleMembership = useCallback((acc, agencyId) => {
+    const cur = acc.memberships.find((x) => x.agency === agencyId);
+    const next = cur?.status === 'Suspended' ? 'Active' : 'Suspended';
+    setAccounts((list) => list.map((a) => (a.id === acc.id
+      ? { ...a, memberships: a.memberships.map((x) => (x.agency === agencyId ? { ...x, status: next } : x)) } : a)));
+    log(next === 'Suspended' ? `Suspended access to ${agencyId}` : `Restored access to ${agencyId}`, acc.name);
+    notify?.(next === 'Suspended' ? `${acc.name} can no longer open ${agencyId}` : `${acc.name} can open ${agencyId} again`);
+  }, [log, notify]);
+
+  const removeMembership = useCallback((acc, agencyId) => {
+    setAccounts((list) => list.map((a) => (a.id === acc.id ? { ...a, memberships: a.memberships.filter((x) => x.agency !== agencyId) } : a)));
+    log(`Removed from ${agencyId}`, acc.name);
+    notify?.(`${acc.name} removed from ${agencyId}. The account is kept`);
+  }, [log, notify]);
+
   const resetPassword = useCallback((acc) => {
     log('Sent password reset', acc.name);
     notify?.(`Password reset email sent to ${acc.email}`);
@@ -70,8 +85,8 @@ export function PlatformProvider({ children, notify }) {
   const value = useMemo(() => ({
     applications, agencies, accounts, audit, settings,
     openApplications: applications.filter((a) => OPEN.includes(a.status)),
-    decideApplication, createAgency, toggleSuspend, toggleAccount, resetPassword, updateSettings, notify,
-  }), [applications, agencies, accounts, audit, settings, decideApplication, createAgency, toggleSuspend, toggleAccount, resetPassword, updateSettings, notify]);
+    decideApplication, createAgency, toggleSuspend, toggleAccount, toggleMembership, removeMembership, resetPassword, updateSettings, notify,
+  }), [applications, agencies, accounts, audit, settings, decideApplication, createAgency, toggleSuspend, toggleAccount, toggleMembership, removeMembership, resetPassword, updateSettings, notify]);
 
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;
 }

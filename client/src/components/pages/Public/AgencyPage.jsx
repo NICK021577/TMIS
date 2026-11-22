@@ -60,7 +60,7 @@ export default function AgencyPage({ notify }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { profile, brand, activities } = useStore();
+  const { profile, brand, activities, cover } = useStore();
   const reduce = useReducedMotion();
 
   const valid = slug?.toLowerCase() === profile.shortName.toLowerCase();
@@ -111,13 +111,15 @@ export default function AgencyPage({ notify }) {
             {/* hero */}
             <motion.section {...rise(0)} className="glass overflow-hidden rounded-3xl">
               <div className="relative h-44 overflow-hidden bg-gradient-to-br from-brand-900 via-brand-700 to-brand-400 sm:h-52">
-                {!reduce && (
+                {cover && <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+                {!reduce && !cover && (
                   <>
                     <motion.span className="absolute -left-10 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" animate={{ x: [0, 40, 0], y: [0, 20, 0] }} transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }} />
                     <motion.span className="absolute -bottom-20 right-10 h-64 w-64 rounded-full bg-[#b9a5ff]/25 blur-2xl" animate={{ x: [0, -50, 0], y: [0, -16, 0] }} transition={{ duration: 17, repeat: Infinity, ease: 'easeInOut' }} />
                   </>
                 )}
-                <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)', backgroundSize: '22px 22px' }} />
+                {cover && <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />}
+                {!cover && <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #fff 1px, transparent 0)', backgroundSize: '22px 22px' }} />}
               </div>
               <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-6 pb-6 sm:px-8">
                 <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 16, delay: 0.25 }} className="relative z-10 -mt-14 rounded-[28%] shadow-[0_12px_30px_rgba(30,60,140,0.22)] ring-4 ring-white">

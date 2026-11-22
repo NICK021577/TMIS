@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Link, matchPath, useLocation } from 'react-router-dom';
 import { Icon, AgencyMark } from '../ui';
 import AccountMenu from '../modals/AccountMenu';
 import NotificationsPopover from '../modals/NotificationsPopover';
-import SearchModal from '../modals/SearchModal';
-import { useAuth } from '../../context/AuthContext';
+import SearchBox from './SearchBox';
 import { useStore } from '../../hooks/useStore';
 import { HEADER_H } from './nav';
 
@@ -21,19 +19,12 @@ const ROUTES = {
 };
 
 /**
- * Topbar — breadcrumb on the left; search, role switch, alerts and account grouped on the right.
+ * Topbar — breadcrumb on the left; search, alerts and account grouped on the right.
  * The page title itself lives in the page (one H1 per screen).
  */
 export function Topbar({ onMenu }) {
-  const { user, switchRole } = useAuth();
   const { pathname } = useLocation();
-  const { activities } = useStore();
-  const [searching, setSearching] = useState(false);
-  useEffect(() => {
-    const onKey = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearching(true); } };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  const { activities, profile } = useStore();
   const [section, page] = ROUTES[pathname.split('/')[1]] ?? ['Workspace', ''];
   // /activities/:id adds a third crumb with the activity's name
   const detailId = matchPath('/activities/:id', pathname)?.params.id;
@@ -68,24 +59,11 @@ export function Topbar({ onMenu }) {
 
       {/* Right: everything else, grouped */}
       <div className="ml-auto flex items-center gap-3">
-        <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="glass-input hidden h-10 w-[280px] items-center gap-2.5 rounded-full px-4 text-left text-ink-500 md:flex">
-          <Icon name="search" size={15} />
-          <span className="flex-1 text-[13px] text-ink-400">Search…</span>
-          <kbd className="rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] text-ink-500 ring-1 ring-black/5">Ctrl K</kbd>
-        </button>
-        <button type="button" onClick={() => setSearching(true)} aria-label="Search" className="grid h-10 w-10 place-items-center rounded-full text-ink-600 transition-colors hover:bg-white/60 md:hidden"><Icon name="search" size={18} /></button>
-
-        <label className="hidden items-center gap-2 text-xs text-ink-500 xl:flex">
-          View as
-          <select value={user?.role ?? ''} onChange={(e) => switchRole(e.target.value)} aria-label="View as role" className="glass-input h-10 rounded-full px-3.5 text-xs text-ink-800">
-            {['Agency Administrator', 'Committee Member', 'Resource Person'].map((r) => <option key={r}>{r}</option>)}
-          </select>
-        </label>
+        <SearchBox />
 
         <NotificationsPopover />
-        <AccountMenu links={[{ label: 'About agency', to: '/about', icon: 'building' }, { label: 'Agency settings', to: '/settings', icon: 'settings' }]} />
+        <AccountMenu links={[{ label: 'About agency', to: `/a/${profile.shortName.toLowerCase()}`, icon: 'building' }]} />
       </div>
-      {searching && <SearchModal onClose={() => setSearching(false)} />}
     </header>
   );
 }

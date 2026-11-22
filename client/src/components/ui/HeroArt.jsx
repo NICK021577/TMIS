@@ -17,3 +17,29 @@ export function HeroArt() {
     </div>
   );
 }
+
+/**
+ * HeroArtAgency — the Agency Admin dashboard banner art. Same soft, glossy CSS-only style as HeroArt,
+ * but built from different shapes: a rising set of pill bars, an arch, a capsule and a diamond.
+ */
+export function HeroArtAgency() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 hidden h-full w-[46%] sm:block">
+      {/* arch */}
+      <span className="absolute -right-[3%] bottom-[-6%] h-[150px] w-[250px] rounded-t-[125px] bg-[radial-gradient(circle_at_30%_20%,#c7f0e4,#34d3a6_55%,#12a27a)] shadow-[0_22px_38px_rgba(18,162,122,0.32)]">
+        <span className="absolute bottom-0 left-1/2 h-[72px] w-[124px] -translate-x-1/2 rounded-t-[62px] bg-[radial-gradient(circle_at_50%_100%,#eef9f6,#d3efe6)] shadow-[inset_0_10px_16px_rgba(18,162,122,0.32)]" />
+      </span>
+      {/* rising pill bars */}
+      <span className="absolute bottom-[4%] right-[44%] h-[70px] w-[26px] rounded-full bg-gradient-to-b from-[#bcd6ff] to-[#4a82ee] shadow-[0_12px_18px_rgba(59,114,230,0.3)]" />
+      <span className="absolute bottom-[4%] right-[37%] h-[112px] w-[26px] rounded-full bg-gradient-to-b from-[#d6e4ff] to-[#2f5fcc] shadow-[0_12px_18px_rgba(47,95,204,0.3)]" />
+      <span className="absolute bottom-[4%] right-[30%] h-[156px] w-[26px] rounded-full bg-gradient-to-b from-[#9cc2ff] to-[#1f4bb0] shadow-[0_12px_18px_rgba(31,75,176,0.32)]" />
+      {/* diamond */}
+      <span className="absolute right-[8%] top-[12%] h-[48px] w-[48px] rotate-45 rounded-[10px] bg-gradient-to-br from-[#ffe08a] to-[#f59e0b] shadow-[0_12px_20px_rgba(245,158,11,0.35)]" />
+      {/* capsule */}
+      <span className="absolute right-[40%] top-[10%] h-[62px] w-[24px] -rotate-[28deg] rounded-full bg-gradient-to-b from-[#ffd0e1] to-[#ee6fa0] shadow-[0_10px_16px_rgba(238,111,160,0.35)]" />
+      {/* dots */}
+      <span className="absolute right-[26%] top-[26%] h-[14px] w-[14px] rounded-full bg-[radial-gradient(circle_at_30%_30%,#fff,#9cc2ff)]" />
+      <span className="absolute right-[18%] top-[48%] h-[10px] w-[10px] rounded-full bg-[#34d3a6]/80" />
+    </div>
+  );
+}

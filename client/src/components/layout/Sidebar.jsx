@@ -4,28 +4,16 @@ import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../hooks/useStore';
 import { AgencyMark } from '../ui';
 import { NavButton, NavItem, NavLabel, SidebarFrame } from './nav';
-
-const WORKSPACE = [
-  { label: 'Dashboard',    icon: 'grid',     to: '/dashboard' },
-  { label: 'Calendar',     icon: 'calendar', to: '/calendar',  roles: ['Agency Administrator', 'Super Admin', 'Committee Member'] },
-  { label: 'Activities',   icon: 'clock',    to: '/activities' },
-  { label: 'Participants', icon: 'users',    to: '/participants' },
-  { label: 'Budget',       icon: 'award',    to: '/budget',    roles: ['Agency Administrator', 'Super Admin'] },
-  { label: 'Reports',      icon: 'chart',    to: '/reports' },
-];
-
-const ADMIN = [
-  { label: 'Messaging',       icon: 'message',  to: '/messaging' },
-  { label: 'About agency',    icon: 'building', to: '/about' },
-  { label: 'Agency settings', icon: 'settings', to: '/settings', roles: ['Agency Administrator', 'Super Admin'] },
-];
+import { useMenus } from '../../hooks/useMenus';
+import { MENUS } from '../../lib/menus';
 
 export function Sidebar({ open = false, onClose }) {
-  const { role, logout } = useAuth();
+  const { logout } = useAuth();
+  const allowed = useMenus();
   const confirm = useConfirm();
   const { profile } = useStore();
   const navigate = useNavigate();
-  const visible = (items) => items.filter((i) => !i.roles || i.roles.includes(role));
+  const group = (name) => MENUS.filter((m) => m.group === name && allowed.includes(m.key));
 
   return (
     <SidebarFrame
@@ -45,11 +33,11 @@ export function Sidebar({ open = false, onClose }) {
     >
       <div className="space-y-0.5">
         <NavLabel>Workspace</NavLabel>
-        {visible(WORKSPACE).map((i) => <NavItem key={i.to} {...i} />)}
+        {group('Workspace').map((i) => <NavItem key={i.to} label={i.label} icon={i.icon} to={i.to} />)}
       </div>
       <div className="space-y-0.5">
         <NavLabel>Administration</NavLabel>
-        {visible(ADMIN).map((i) => <NavItem key={i.to} {...i} />)}
+        {group('Administration').map((i) => <NavItem key={i.to} label={i.label} icon={i.icon} to={i.to} />)}
       </div>
     </SidebarFrame>
   );

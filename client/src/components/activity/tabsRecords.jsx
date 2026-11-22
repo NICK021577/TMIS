@@ -2,11 +2,13 @@ import { useConfirm } from '../modals/confirmContext';
 import { useRef, useState } from 'react';
 import { ActionIcon, Avatar, Badge, Button, DataTable, Icon, MeterRow, Metric, Panel, PanelTitle, ProgressBar, Select, Switch } from '../ui';
 import { useEditing } from './editContext';
+import FeedbackSummary from './FeedbackSummary';
 import { useStore } from '../../hooks/useStore';
 import CertificateCanvas, { CERT_COLORS, CERT_STYLES, DEFAULT_TEMPLATE, certificateDocument } from '../modals/CertificateCanvas';
 import CertificatePreviewModal from '../modals/CertificatePreviewModal';
 import DocumentPreviewModal, { downloadDoc } from '../modals/DocumentPreviewModal';
 import UploadDocumentModal from '../modals/UploadDocumentModal';
+import SignaturePadModal from '../modals/SignaturePadModal';
 import { certificateHtml, downloadCsv, downloadFile } from '../../lib/download';
 import {
   CERT_ROWS, FEEDBACK, FEEDBACK_COMMENTS, FEEDBACK_FORM, FEEDBACK_SUMMARY, OUTPUT_SUBMISSIONS, REENTRY,
@@ -331,11 +333,13 @@ function FeedbackResponses({ notify }) {
 }
 
 export function FeedbackTab({ notify }) {
-  const [view, setView] = useState('responses');
+  const [view, setView] = useState('summary');
   return (
     <div className="space-y-4">
-      <Pills value={view} onChange={setView} options={[{ id: 'responses', label: 'Responses and ratings' }, { id: 'form', label: 'Feedback form' }]} />
-      {view === 'responses' ? <FeedbackResponses notify={notify} /> : <FeedbackForm notify={notify} />}
+      <Pills value={view} onChange={setView} options={[{ id: 'summary', label: 'Summary' }, { id: 'responses', label: 'Responses and ratings' }, { id: 'form', label: 'Feedback form' }]} />
+      {view === 'summary' && <FeedbackSummary />}
+      {view === 'responses' && <FeedbackResponses notify={notify} />}
+      {view === 'form' && <FeedbackForm notify={notify} />}
     </div>
   );
 }
@@ -445,6 +449,10 @@ export function CertificatesTab({ activity, notify }) {
   const [rows, setRows] = useState(CERT_ROWS);
   const [preview, setPreview] = useState(null);
   const [viewing, setViewing] = useState(null);
+  const [signing, setSigning] = useState(null);   // index of the signatory being drawn
+  const [sigError, setSigError] = useState('');
+  const sigFile = useRef(null);
+  const sigFor = useRef(0);
   const pickRow = useRef(null);
   const single = useRef(null);
   const bulk = useRef(null);
@@ -454,6 +462,17 @@ export function CertificatesTab({ activity, notify }) {
   const releasable = manual ? eligible.filter((r) => r.file) : eligible;
   const attached = eligible.filter((r) => r.file).length;
   const setT = (patch) => setTemplate((t) => ({ ...t, ...patch }));
+  const onSigFile = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) { setSigError('Use a PNG, JPG or WebP image.'); return; }
+    if (f.size > 2 * 1048576) { setSigError('The image is larger than 2 MB.'); return; }
+    setSigError('');
+    const reader = new FileReader();
+    reader.onload = () => setSigner(sigFor.current, { signature: reader.result });
+    reader.readAsDataURL(f);
+  };
   const setSigner = (i, patch) => setTemplate((t) => ({ ...t, signers: t.signers.map((s, j) => (j === i ? { ...s, ...patch } : s)) }));
 
   const propsFor = (r, t = template) => ({
@@ -599,9 +618,22 @@ export function CertificatesTab({ activity, notify }) {
                     <legend className="mb-1 text-xs text-ink-500">Signatory {i + 1}</legend>
                     <input className={tplField} disabled={!editing} value={s.name} onChange={(e) => setSigner(i, { name: e.target.value })} placeholder="Name" aria-label={`Signatory ${i + 1} name`} />
                     <input className={tplField} disabled={!editing} value={s.role} onChange={(e) => setSigner(i, { role: e.target.value })} placeholder="Role" aria-label={`Signatory ${i + 1} role`} />
+                    <div className="glass-inset flex items-center gap-2 rounded-lg p-2">
+                      <span className="grid h-10 w-16 flex-shrink-0 place-items-center overflow-hidden rounded-md bg-white ring-1 ring-black/5">
+                        {s.signature ? <img src={s.signature} alt={`Signature of signatory ${i + 1}`} className="max-h-full max-w-full object-contain" /> : <span className="text-[10px] text-ink-400">No signature</span>}
+                      </span>
+                      <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+                        <Button variant="secondary" size="sm" icon="upload" disabled={!editing} onClick={() => { sigFor.current = i; sigFile.current?.click(); }}>Upload</Button>
+                        <Button variant="secondary" size="sm" icon="edit" disabled={!editing} onClick={() => setSigning(i)}>Draw</Button>
+                        {s.signature && <Button variant="ghost" size="sm" disabled={!editing} onClick={() => setSigner(i, { signature: null })}>Remove</Button>}
+                      </div>
+                    </div>
                   </fieldset>
                 ))}
               </div>
+              <input ref={sigFile} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" aria-label="Upload signature image" onChange={onSigFile} />
+              {sigError && <p className="flex items-center gap-1.5 text-xs text-danger"><Icon name="alert" size={13} />{sigError}</p>}
+              <p className="-mt-2 text-[11px] text-ink-400">A signature image or drawing replaces the typed name above the line. Transparent PNGs look best.</p>
               <label className="flex items-center gap-2.5 text-[13px] text-ink-700">
                 <span className={editing ? '' : 'pointer-events-none opacity-60'}><Switch checked={template.showLogo} onChange={(v) => setT({ showLogo: v })} label="Show the agency logo" /></span>
                 Show the agency logo
@@ -646,6 +678,7 @@ export function CertificatesTab({ activity, notify }) {
 
       {preview && <CertificatePreviewModal row={preview} activity={activity} template={template} onClose={() => setPreview(null)} notify={notify} />}
       {viewing && <DocumentPreviewModal doc={viewing} onClose={() => setViewing(null)} notify={notify} />}
+      {signing !== null && <SignaturePadModal name={template.signers[signing]?.name} onSave={(data) => setSigner(signing, { signature: data })} onClose={() => setSigning(null)} />}
     </div>
   );
 }

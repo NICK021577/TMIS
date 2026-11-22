@@ -5,6 +5,8 @@ import { SettingsLayout } from '../../settings/SettingsKit';
 import ProfileTab from '../../settings/ProfileTab';
 import BrandingTab from '../../settings/BrandingTab';
 import CategoriesTab from '../../settings/CategoriesTab';
+import PartnersTab from '../../settings/PartnersTab';
+import FundingTab from '../../settings/FundingTab';
 import UsersTab from '../../settings/UsersTab';
 import RolesTab from '../../settings/RolesTab';
 
@@ -12,7 +14,9 @@ const SECTIONS = [
   { id: 'profile',    label: 'Agency profile', icon: 'building', desc: 'Name, mission and vision', Body: ProfileTab },
   { id: 'brand',      label: 'Branding',       icon: 'sparkle',  desc: 'Logo and colors',          Body: BrandingTab },
   { id: 'categories', label: 'Participant categories', icon: 'users', desc: 'Who participates',    Body: CategoriesTab },
-  { id: 'users',      label: 'Users',          icon: 'key',      desc: 'Accounts and invites',     Body: UsersTab },
+  { id: 'partners',   label: 'Partner agencies', icon: 'link',  desc: 'Who you work with',       Body: PartnersTab },
+  { id: 'funding',    label: 'Funding sources',  icon: 'award', desc: 'Where the money comes from', Body: FundingTab },
+  { id: 'users',      label: 'Users',         icon: 'key',      desc: 'Accounts and invites',     Body: UsersTab },
   { id: 'roles',      label: 'Roles & permissions', icon: 'shield', desc: 'Who can see what',     Body: RolesTab },
 ];
 

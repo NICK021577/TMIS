@@ -11,7 +11,7 @@ export { Drawer, KeyValue } from './Drawer';
 export { Modal } from './Modal';
 export { ActionIcon } from './ActionIcon';
 export { BarChart, Donut, Legend, MeterRow } from './Charts';
-export { HeroArt } from './HeroArt';
+export { HeroArt, HeroArtAgency } from './HeroArt';
 export { HeroScene } from './HeroScene';
 export { Popover } from './Popover';
 export { LogoMood } from './LogoMood';

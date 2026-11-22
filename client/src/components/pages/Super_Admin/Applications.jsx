@@ -3,26 +3,22 @@ import { useState } from 'react';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
 import { ActionIcon, Badge, Button, Cell, DataTable, Drawer, Icon, KeyValue, Metric, Panel, Select } from '../../ui';
 import { contactName } from '../../../data/platformData';
+import { docSlots } from '../../../lib/verification';
 import { usePlatform } from '../../../hooks/usePlatform';
-
-const REQUIRED = [
-  { id: 'authLetter', label: 'Authorization letter' },
-  { id: 'moa', label: 'Memorandum of Agreement (MOA)' },
-  { id: 'validId', label: 'Valid ID of the contact person' },
-];
 
 function ReviewDrawer({ app, onClose }) {
   const { decideApplication, notify } = usePlatform();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const closed = app.status === 'Approved' || app.status === 'Rejected';
-  const missing = REQUIRED.some((r) => !app.docs.find((d) => d.id === r.id));
+  const slots = docSlots(app.type, app.email);
+  const missing = slots.some((r) => r.required && !r.auto && !app.docs.find((d) => d.id === r.id));
 
   const confirm = useConfirm();
   const decide = async (status, why) => {
     const who = contactName(app);
     const ask = {
-      Approved:     { tone: 'info',   title: `Approve ${app.agency}?`, message: `This creates the workspace and emails an invitation to ${who}, who becomes the first Agency Administrator.`, confirmLabel: 'Approve application' },
+      Approved:     { tone: 'info',   title: `Approve ${app.agency}?`, message: `This unlocks live trainee enrollment and certificate issuance, and ${who} becomes the first Agency Administrator.`, confirmLabel: 'Approve application' },
       Rejected:     { tone: 'danger', title: `Reject ${app.agency}?`, message: `${who} will be told the application was rejected, along with the reason you gave.`, detail: 'This cannot be undone. They can apply again.', confirmLabel: 'Reject application' },
       'Needs info': { tone: 'warn',   title: 'Request more information?', message: `${who} will receive an email asking for more information.`, confirmLabel: 'Send request' },
     }[status];
@@ -75,16 +71,31 @@ function ReviewDrawer({ app, onClose }) {
       <section className="space-y-2">
         <h3 className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Supporting documents</h3>
         <ul className="space-y-2">
-          {REQUIRED.map((r) => {
+          {slots.map((r) => {
             const doc = app.docs.find((d) => d.id === r.id);
+            if (!doc && r.auto) {
+              return (
+                <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-emerald-50/70 p-3 ring-1 ring-emerald-200">
+                  <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg bg-white text-emerald-600"><Icon name="check" size={16} /></span>
+                  <span className="min-w-0 flex-1">
+                    <small className="block text-[11px] text-ink-500">{r.n}. {r.short}</small>
+                    <strong className="block text-[13px] font-medium text-ink-950">Auto-verified by {r.autoLabel} email</strong>
+                    <small className="text-xs text-ink-500">{app.email}</small>
+                  </span>
+                </li>
+              );
+            }
+            const absent = !doc && !r.required;
             return (
-              <li key={r.id} className={`flex items-center gap-3 rounded-2xl p-3 ${doc ? 'glass-inset' : 'bg-red-50/70 ring-1 ring-red-200'}`}>
-                <span className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg ${doc ? 'bg-white text-brand-600' : 'bg-white text-danger'}`}><Icon name={doc ? 'file' : 'alert'} size={16} /></span>
+              <li key={r.id} className={`flex items-center gap-3 rounded-2xl p-3 ${doc ? 'glass-inset' : absent ? 'glass-inset opacity-70' : 'bg-red-50/70 ring-1 ring-red-200'}`}>
+                <span className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg ${doc ? 'bg-white text-brand-600' : absent ? 'bg-white text-ink-400' : 'bg-white text-danger'}`}><Icon name={doc || absent ? 'file' : 'alert'} size={16} /></span>
                 <span className="min-w-0 flex-1">
-                  <small className="block text-[11px] text-ink-500">{r.label}</small>
+                  <small className="block text-[11px] text-ink-500">{r.n}. {r.short}{!r.required && !r.auto ? ' (optional)' : ''}</small>
                   {doc
-                    ? <strong className="block truncate text-[13px] font-medium text-ink-950">{doc.file} <span className="font-normal text-ink-500">· {doc.size}</span></strong>
-                    : <strong className="block text-[13px] font-medium text-danger">Not submitted</strong>}
+                    ? <strong className="block truncate text-[13px] font-medium text-ink-950">{doc.kind && <span className="font-normal text-ink-500">{doc.kind} · </span>}{doc.file} <span className="font-normal text-ink-500">· {doc.size}</span></strong>
+                    : absent
+                      ? <strong className="block text-[13px] font-medium text-ink-500">Not provided</strong>
+                      : <strong className="block text-[13px] font-medium text-danger">Not submitted</strong>}
                 </span>
                 {doc && (
                   <>
@@ -120,7 +131,7 @@ function ReviewDrawer({ app, onClose }) {
 
       {!closed && !rejecting && (
         <p className="text-[13px] leading-relaxed text-ink-600">
-          Approving creates the workspace and emails an invitation to the contact person, who becomes the first Agency Administrator.
+          Approving unlocks live trainee enrollment and certificate issuance. The contact person becomes the first Agency Administrator.
         </p>
       )}
     </Drawer>
@@ -151,7 +162,7 @@ export default function Applications() {
       <PageHeader
         eyebrow="Platform"
         title="Applications queue"
-        subtitle="Sign-up creates an application. No workspace or login exists until it is approved."
+        subtitle="Sign-up creates an application in Pending verification: the agency can explore and draft. Live enrollment and certificates unlock only when you approve."
       />
 
       <div className="mb-5 grid grid-cols-2 gap-4 xl:grid-cols-4">

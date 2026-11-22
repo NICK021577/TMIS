@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Icon } from './Icon';
+import { Overlay } from './Overlay';
 
 /**
  * Drawer — right-side glass panel for review / detail / create flows.
@@ -13,6 +14,7 @@ export function Drawer({ title, subtitle, onClose, children, footer, width = 460
   }, [onClose]);
 
   return (
+    <Overlay>
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="glass-backdrop absolute inset-0 animate-fade-in" onClick={onClose} aria-hidden="true" />
       <aside
@@ -41,6 +43,7 @@ export function Drawer({ title, subtitle, onClose, children, footer, width = 460
         )}
       </aside>
     </div>
+    </Overlay>
   );
 }
 

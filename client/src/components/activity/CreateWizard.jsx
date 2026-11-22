@@ -1,25 +1,28 @@
 import { useState } from 'react';
 import { Badge, Button, Callout, Field, Icon, Modal, inputCls, textareaCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
-import { ACTIVITY_TYPES, BUDGET_CATEGORIES, FUNDING, peso } from '../../data/mockData';
+import { ACTIVITY_TYPES, BUDGET_CATEGORIES, peso } from '../../data/mockData';
 import { ROLE_OPTIONS } from '../../data/workspaceData';
 import { estOf, formatRange } from '../../lib/budgetModel';
+import PartnerSelect from '../shared/PartnerSelect';
 
 const STEPS = ['Basics', 'Plan & agencies', 'Allocated budget', 'Required documents', 'Review'];
 const REQUIRED_DOCS = ['Proposal', 'Approval memo', 'Program of activities', 'Budget breakdown'];
 
 const empty = {
-  title: '', type: ACTIVITY_TYPES[0], funding: FUNDING[0], start: '', end: '', venue: '', lead: 'Alexis Ramos',
+  title: '', type: ACTIVITY_TYPES[0], funding: '', start: '', end: '', venue: '', lead: 'Alexis Ramos',
   target: 40, description: '', openToAll: true, audience: [], location: '',
   topics: '', objectives: '', outcomes: '',
-  agencies: [{ name: 'Philippine Rubber Research Institute', role: 'Implementing' }],
+  agencies: [],
   budget: [], docs: {},
 };
 
 export default function CreateWizard({ onClose, prefill, onCreated }) {
-  const { items, annual, createActivity, notify, categories } = useStore();
+  const { items, annual, createActivity, notify, categories, fundingNames, partners } = useStore();
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ ...empty, ...prefill });
+  // The agency itself is the default Implementing partner, and the first funding source is preselected
+  const ownId = partners.find((p) => p.own)?.id ?? null;
+  const [f, setF] = useState({ ...empty, funding: fundingNames[0] ?? '', agencies: [{ partnerId: ownId, role: 'Implementing' }], ...prefill });
   const [line, setLine] = useState({ category: BUDGET_CATEGORIES[0], item: '', qty: 1, unit: '' });
   const set = (patch) => setF((p) => ({ ...p, ...patch }));
 
@@ -43,23 +46,24 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
     participants: 0, capacity: Number(f.target) || 0, tenant: 'PRRI',
   });
 
+  const partnerRows = () => f.agencies.filter((a) => a.partnerId != null).map((a) => ({ partnerId: a.partnerId, role: a.role }));
+  const partnerName = (id) => partners.find((p) => p.id === id)?.name ?? '';
   const lines = (t) => t.split(/\n|;/).map((x) => x.trim()).filter(Boolean);
   const detailsOf = () => ({
     description: f.description.trim(), funding: f.funding, lead: f.lead, topics: f.topics.trim(), documentation: '', programFlow: null,
-    agencies: `${f.agencies.length} partner organization${f.agencies.length === 1 ? '' : 's'}`,
     audience: f.openToAll || !f.audience.length ? 'participants' : f.audience.join(', '),
     objectives: lines(f.objectives), outcomes: lines(f.outcomes),
   });
 
   const saveDraft = () => {
     if (!f.title.trim()) return;
-    createActivity(build('Draft'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf());
+    createActivity(build('Draft'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf(), partnerRows());
     notify?.('Draft saved');
     onCreated?.();
     onClose();
   };
   const create = () => {
-    createActivity(build('Upcoming'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf());
+    createActivity(build('Upcoming'), f.budget.map((b) => ({ ...b, funding: f.funding })), detailsOf(), partnerRows());
     notify?.(`“${f.title.trim()}” created and added to the calendar`);
     onCreated?.();
     onClose();
@@ -113,7 +117,7 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
           <Field label="Title"><input className={inputCls} value={f.title} onChange={(e) => set({ title: e.target.value })} autoFocus /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Type"><select className={inputCls} value={f.type} onChange={(e) => set({ type: e.target.value })}>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</select></Field>
-            <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => set({ funding: e.target.value })}>{FUNDING.map((t) => <option key={t}>{t}</option>)}</select></Field>
+            <Field label="Funding source"><select className={inputCls} value={f.funding} onChange={(e) => set({ funding: e.target.value })}>{fundingNames.map((t) => <option key={t}>{t}</option>)}</select></Field>
             <Field label="Start date"><input type="date" className={inputCls} value={f.start} onChange={(e) => set({ start: e.target.value, end: f.end && f.end < e.target.value ? e.target.value : f.end })} /></Field>
             <Field label="End date" hint={f.end && f.start && f.end < f.start ? 'End must not be before the start date' : undefined}><input type="date" min={f.start} className={inputCls} value={f.end} onChange={(e) => set({ end: e.target.value })} /></Field>
           </div>
@@ -156,14 +160,15 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
             <span className="mb-1.5 block text-xs text-ink-600">Agency roles</span>
             <ul className="space-y-2">
               {f.agencies.map((a, i) => (
-                <li key={i} className="grid grid-cols-[1fr_170px_32px] gap-2">
-                  <input className={inputCls} value={a.name} aria-label="Agency name" onChange={(e) => set({ agencies: f.agencies.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} />
+                <li key={i} className="grid grid-cols-[1fr_170px_32px] items-start gap-2">
+                  <PartnerSelect value={a.partnerId} ariaLabel="Partner agency" exclude={f.agencies.filter((_, j) => j !== i).map((x) => x.partnerId)}
+                    onChange={(id) => set({ agencies: f.agencies.map((x, j) => (j === i ? { ...x, partnerId: id } : x)) })} />
                   <select className={inputCls} value={a.role} aria-label="Role" onChange={(e) => set({ agencies: f.agencies.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)) })}>{ROLE_OPTIONS.map((o) => <option key={o}>{o}</option>)}</select>
                   <button type="button" aria-label="Remove" onClick={() => set({ agencies: f.agencies.filter((_, j) => j !== i) })} className="grid place-items-center rounded-full text-ink-400 hover:text-danger"><Icon name="close" size={14} /></button>
                 </li>
               ))}
             </ul>
-            <Button variant="ghost" size="sm" icon="plus" className="mt-2" onClick={() => set({ agencies: [...f.agencies, { name: '', role: 'Collaborating' }] })}>Add agency</Button>
+            <Button variant="ghost" size="sm" icon="plus" className="mt-2" onClick={() => set({ agencies: [...f.agencies, { partnerId: null, role: 'Collaborating' }] })}>Add agency</Button>
           </div>
         </div>
       )}
@@ -227,7 +232,7 @@ export default function CreateWizard({ onClose, prefill, onCreated }) {
               ['Type and dates', `${f.type} · ${formatRange(f.start, f.end)}`],
               ['Venue and lead', `${f.venue} · ${f.lead}`],
               ['Audience', f.openToAll ? 'Open to all participants' : f.audience.join(', ') || '—'],
-              ['Agencies', f.agencies.map((a) => `${a.name} (${a.role})`).join('; ') || '—'],
+              ['Agencies', f.agencies.filter((a) => a.partnerId != null).map((a) => `${partnerName(a.partnerId)} (${a.role})`).join('; ') || '—'],
               ['Budget', `${peso(total)} · ${f.budget.length} line${f.budget.length === 1 ? '' : 's'}`],
               ['Documents', `${REQUIRED_DOCS.filter((d) => f.docs[d]).length} of ${REQUIRED_DOCS.length} attached`],
             ].map(([k, v]) => (

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PageWrapper, PageHeader } from '../../layout/PageWrapper';
-import { BarChart, Badge, Button, Donut, HeroScene, Icon, Legend, MeterRow, Metric, Panel, PanelTitle } from '../../ui';
+import { BarChart, Badge, Button, Donut, HeroArtAgency, Icon, Legend, MeterRow, Metric, Panel, PanelTitle } from '../../ui';
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
 import { ACTIVITY_SUMMARY, AGENCY, DASHBOARD_STATS, TREND, peso } from '../../../data/mockData';
@@ -45,10 +45,10 @@ export default function Dashboard({ notify }) {
         <Button icon="plus" onClick={() => navigate('/activities?new=1')}>Create activity</Button>
       </PageHeader>
 
-      {/* Banner with a live 3D scene (drag it) */}
+      {/* Banner: soft CSS shapes, same family as the Super Admin dashboard */}
       {next && (
-        <section className="banner-pastel relative mb-5 min-h-[240px] overflow-hidden rounded-[20px] ring-1 ring-white/80">
-          <HeroScene />
+        <section className="banner-pastel relative mb-5 min-h-[220px] overflow-hidden rounded-[20px] ring-1 ring-white/80">
+          <HeroArtAgency />
           <div className="relative flex h-full max-w-[540px] flex-col items-start p-6 sm:p-8">
             <div className="mb-4 flex items-center gap-3">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-950 text-[11px] font-medium text-white">{AGENCY.shortName.slice(0, 2)}</span>

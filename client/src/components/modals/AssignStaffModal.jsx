@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Field, Modal, inputCls } from '../ui';
 import { STAFF, STAFF_ROLES } from '../../data/workspaceData';
+import { ACTIVITY_ROLE_HELP } from '../../lib/activityAccess';
 
 const PEOPLE = [...new Set(STAFF.map((s) => s.name))];
 
@@ -20,7 +21,7 @@ export default function AssignStaffModal({ day, onAssign, onClose }) {
           <span />
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button disabled={!ok} onClick={() => { onAssign(day.n, { name: f.name, role: f.role, duty: f.duty.trim(), status: 'Pending' }); onClose(); }}>Assign</Button>
+            <Button disabled={!ok} onClick={() => { onAssign(day.n, { name: f.name, email: STAFF.find((x) => x.name === f.name)?.email, role: f.role, duty: f.duty.trim(), status: 'Pending' }); onClose(); }}>Assign</Button>
           </div>
         </>
       }
@@ -31,7 +32,7 @@ export default function AssignStaffModal({ day, onAssign, onClose }) {
             {PEOPLE.map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
-        <Field label="Role">
+        <Field label="Role in this activity" hint={ACTIVITY_ROLE_HELP.find(([r]) => r === f.role)?.[1]}>
           <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
             {STAFF_ROLES.map((r) => <option key={r}>{r}</option>)}
           </select>
