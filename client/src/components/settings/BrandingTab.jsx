@@ -48,6 +48,7 @@ export default function BrandingTab({ readOnly, notify }) {
   const [hex, setHex] = useState(() => hslToHex(brand.h, brand.s, clampShade(brand.l)));
   const [name, setName] = useState(profile.name);
   const [desc, setDesc] = useState(profile.description);
+  const [editing, setEditing] = useState(false);
 
   // Colors and the logo preview live, so the last saved state is kept to discard back to.
   const [saved, setSaved] = useState({ brand, logo, cover, name: profile.name, desc: profile.description });
@@ -58,8 +59,10 @@ export default function BrandingTab({ readOnly, notify }) {
   const save = () => {
     setProfile({ ...profile, name, description: desc });
     setSaved({ brand, logo, cover, name, desc });
+    setEditing(false);
     notify?.('Branding saved. Your sidebar and participant pages are updated');
   };
+  const cancel = () => { revert(); setEditing(false); };
   // Leaving the tab without saving drops the unsaved preview.
   useEffect(() => () => { const l = latest.current; if (l.dirty) { l.setBrand(l.saved.brand); l.setLogo(l.saved.logo); l.setCover(l.saved.cover); } }, []);
 
@@ -96,13 +99,31 @@ export default function BrandingTab({ readOnly, notify }) {
 
   const swatches = scale(brand);
 
-  return (
-    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_300px]">
+  // Opens on the live preview; Edit swaps it for the form until the changes are saved or cancelled.
+  if (!editing) {
+    return (
       <Panel>
-        <PanelTitle title="Participant-facing brand" subtitle="Used on your agency page, published activities, and participant notifications." />
+        <PanelTitle title="Participant-facing brand" subtitle="How your agency appears to participants on its page, published activities, and notifications.">
+          {!readOnly && <Button size="sm" icon="edit" onClick={() => setEditing(true)}>Edit branding</Button>}
+        </PanelTitle>
         {readOnly && <div className="mb-4"><Callout tone="info" icon="lock">Only Agency Administrators can change branding.</Callout></div>}
+        <div className="glass-inset rounded-2xl p-5">
+          <ParticipantPreview />
+          <div className="mx-auto mt-4 flex h-3 max-w-[260px] overflow-hidden rounded-full" aria-label="Brand palette">
+            {swatches.map((c, i) => <span key={i} className="flex-1" style={{ background: c }} />)}
+          </div>
+        </div>
+      </Panel>
+    );
+  }
 
-        <fieldset disabled={readOnly} className="space-y-5 disabled:opacity-70">
+  return (
+      <Panel>
+        <PanelTitle title="Edit branding" subtitle="Used on your agency page, published activities, and participant notifications. Changes preview live in the console.">
+          <Button size="sm" variant="secondary" icon="eye" onClick={cancel}>Back to preview</Button>
+        </PanelTitle>
+
+        <div className="space-y-5">
           {/* Logo */}
           <div className="glass-inset flex flex-wrap items-center gap-4 rounded-2xl p-4">
             <AgencyMark size={56} />
@@ -197,11 +218,8 @@ export default function BrandingTab({ readOnly, notify }) {
             <strong className="block font-medium">Recommended theming model</strong>
             Keep the management console structurally consistent for all agencies. Apply each agency’s logo, primary color, and cover identity most strongly on participant-facing discovery pages.
           </Callout>
-        </fieldset>
-        {!readOnly && <SaveBar dirty={dirty} canSave={!!name.trim()} onDiscard={revert} onSave={save} />}
+        </div>
+        <SaveBar dirty={dirty} canSave={!!name.trim()} onDiscard={cancel} onSave={save} />
       </Panel>
-
-      <ParticipantPreview />
-    </div>
   );
 }
