@@ -1,5 +1,5 @@
 /**
- * Calls the UniFyle server. In development Vite forwards /api to http://localhost:5000.
+ * Calls the UniFyle server. In development Vite forwards /api to http://localhost:8000.
  * The session lives in an httpOnly cookie set by the server at sign-in, so it is sent automatically.
  *
  *   const data = await api('/users/login', { method: 'POST', body: { email, password, client: 'web' } });
