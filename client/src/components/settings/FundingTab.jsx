@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useConfirm } from '../modals/confirmContext';
-import { Badge, Button, DataTable, Field, Modal, Panel, PanelTitle, inputCls } from '../ui';
+import { ActionIcon, Badge, Button, DataTable, Field, Modal, Panel, PanelTitle, inputCls } from '../ui';
 import { useStore } from '../../hooks/useStore';
 import PartnerSelect from '../shared/PartnerSelect';
 
@@ -43,7 +43,7 @@ export default function FundingTab({ readOnly, notify }) {
       key: 'name', label: 'Funding source',
       render: (f) => (editing === f.id ? (
         <input autoFocus className={`${inputCls} !h-8`} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => rename(f)} onKeyDown={(e) => e.key === 'Enter' && rename(f)} aria-label="Rename funding source" />
-      ) : <strong className="font-medium text-ink-950">{f.name}</strong>),
+      ) : <strong className="whitespace-nowrap font-medium text-ink-950">{f.name}</strong>),
     },
     {
       key: 'partner', label: 'Funded by',
@@ -52,17 +52,19 @@ export default function FundingTab({ readOnly, notify }) {
           onChange={(id) => setFundingSources((l) => l.map((x) => (x.id === f.id ? { ...x, partnerId: id } : x)))} />
       ),
     },
-    { key: 'used', label: 'Used in', render: (f) => <span className="text-ink-600">{usedIn(f)} {usedIn(f) === 1 ? 'record' : 'records'}</span> },
-    { key: 'status', label: 'Status', render: (f) => <Badge value={f.archived ? 'Archived' : 'Active'} tone={f.archived ? 'muted' : 'ok'} /> },
-    {
-      key: 'act', label: '', className: 'text-right',
-      render: (f) => !readOnly && (
+    { key: 'used', label: 'Used in', render: (f) => <span className="whitespace-nowrap text-ink-600">{usedIn(f)} {usedIn(f) === 1 ? 'record' : 'records'}</span> },
+    { key: 'status', label: 'Status', render: (f) => <span className="whitespace-nowrap"><Badge value={f.archived ? 'Archived' : 'Active'} tone={f.archived ? 'muted' : 'ok'} /></span> },
+    ...(readOnly ? [] : [{
+      key: 'act', label: 'Actions', className: 'text-right',
+      render: (f) => (
         <div className="flex justify-start gap-1">
-          <Button variant="ghost" size="sm" onClick={() => { setEditing(f.id); setDraft(f.name); }}>Rename</Button>
-          <Button variant="ghost" size="sm" onClick={() => toggle(f)}>{f.archived ? 'Restore' : 'Archive'}</Button>
+          <ActionIcon icon="edit" tone="brand" label={`Rename ${f.name}`} onClick={() => { setEditing(f.id); setDraft(f.name); }} />
+          {f.archived
+            ? <ActionIcon icon="restore" tone="ok" label={`Restore ${f.name}`} onClick={() => toggle(f)} />
+            : <ActionIcon icon="archive" tone="danger" label={`Archive ${f.name}`} onClick={() => toggle(f)} />}
         </div>
       ),
-    },
+    }]),
   ];
 
   return (
