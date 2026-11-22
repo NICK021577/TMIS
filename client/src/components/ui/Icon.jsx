@@ -115,6 +115,8 @@ const paths = {
     </>
   ),
   refresh:  <path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" />,
+  archive:  <path d="M3 4h18v4H3ZM5 8v12h14V8M10 12h4" />,
+  restore:  <path d="M3 4h18v4H3ZM5 8v12h14V8M12 18v-6M9.5 14.5 12 12l2.5 2.5" />,
   link:     <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />,
 
   // Status / Info
