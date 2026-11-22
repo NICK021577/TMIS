@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(KEY)) ?? null; } catch { return null; }
   });
-  // user shape: { name, email, role, agency, menus, token }
+  // user shape: { id, name, email, role, agency, agencyName, menus }  (the session itself is an httpOnly cookie)
 
   function login(userData) {
     setUser(userData);
@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    api('/users/logout', { method: 'POST' }).catch(() => { /* the saved session is dropped either way */ });
     setUser(null);
     try { sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ }
   }
@@ -34,11 +35,11 @@ export function AuthProvider({ children }) {
   // Refresh the role and menus from the server (an administrator may have changed them), and drop a session the
   // server no longer accepts (expired, suspended). A server that cannot be reached keeps the saved session.
   useEffect(() => {
-    if (!user?.token) return undefined;
+    if (!user) return undefined;
     let live = true;
-    api('/auth/me')
-      .then(({ user: fresh }) => { if (live) setUser((u) => { if (!u) return u; const next = { ...u, ...fresh }; save(next); return next; }); })
-      .catch((err) => { if (live && (err.status === 401 || err.status === 403)) logout(); });
+    api('/users/me')
+      .then(({ session: fresh }) => { if (live) setUser((u) => { if (!u) return u; const next = { ...u, ...fresh }; save(next); return next; }); })
+      .catch((err) => { if (live && (err.status === 401 || err.status === 403)) { setUser(null); try { sessionStorage.removeItem(KEY); } catch { /* storage unavailable */ } } });
     return () => { live = false; };
     // runs once per page load
     // eslint-disable-next-line react-hooks/exhaustive-deps
