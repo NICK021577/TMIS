@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { Avatar, Badge, Button, Cell, DataTable, Metric, Modal, Panel, SearchInput, Select } from '../ui';
+import { useRef, useState } from 'react';
+import { Avatar, Badge, Button, Cell, DataTable, Field, Icon, Metric, Modal, Panel, SearchInput, Select, inputCls } from '../ui';
+import DocumentPreviewModal from '../modals/DocumentPreviewModal';
+import { useConfirm } from '../modals/confirmContext';
+import { useEditing } from './editContext';
+import { sessionOrder } from '../../lib/sessions';
 import { ATTENDANCE } from '../../data/mockData';
 import { useStore } from '../../hooks/useStore';
 import { downloadCsv } from '../../lib/download';
@@ -44,7 +48,22 @@ function Point({ cell }) {
  * Each day has four check points: AM check-in, AM check-out, PM check-in and PM check-out.
  */
 export default function AttendanceTab({ activity, notify }) {
-  const { staffDays } = useStore();
+  const { staffDays, sessions, attendanceSheets, setAttendanceSheets } = useStore();
+  const editing = useEditing();
+  const confirm = useConfirm();
+  const [attaching, setAttaching] = useState(false);
+  const [viewing, setViewing] = useState(null);
+  const sheets = [...(attendanceSheets[activity.id] ?? [])].sort((a, b) => a.day - b.day || a.id - b.id);
+  const setSheets = (fn) => setAttendanceSheets((m) => ({ ...m, [activity.id]: fn(m[activity.id] ?? []) }));
+  const removeSheet = async (sh) => {
+    if (await confirm({ tone: 'danger', title: 'Remove this attendance sheet?', message: `“${sh.file}” will no longer be attached to this activity.`, confirmLabel: 'Remove' })) {
+      setSheets((l) => l.filter((x) => x.id !== sh.id));
+      notify?.('Attendance sheet removed');
+      return true;
+    }
+    return false;
+  };
+  const coversText = (sh) => (sh.covers === 'Whole day' ? 'Whole day' : sh.covers === 'AM' || sh.covers === 'PM' ? `${sh.covers} check-ins` : sessions.find((x) => String(x.id) === sh.covers)?.title ?? 'Session');
   const [day, setDay] = useState(staffDays[0]?.n ?? 1);
   const [session, setSession] = useState('All sessions');
   const [status, setStatus] = useState('All statuses');
@@ -65,9 +84,27 @@ export default function AttendanceTab({ activity, notify }) {
   const pending = ATTENDANCE.reduce((n, p) => n + POINTS.filter((pt) => p[pt.key].status === 'Pending sync').length, 0);
   const pct = (n) => `${Math.round((n / registered) * 100)}% of registered`;
 
+  // Paper sheets for the chosen day that cover the check points on screen (a session sheet counts for its period).
+  const periodOf = (sh) => (sh.covers === 'AM' || sh.covers === 'PM' ? sh.covers : sessions.find((x) => String(x.id) === sh.covers)?.period);
+  const daySheets = sheets.filter((sh) => sh.day === day && (sh.covers === 'Whole day' || shown.some((pt) => pt.period === periodOf(sh))));
+  const chipText = (sh) => (sh.covers === 'Whole day' ? 'Whole day' : sh.covers === 'AM' || sh.covers === 'PM' ? `${sh.covers} sheet` : `${periodOf(sh) ?? ''} session`.trim());
+
   const columns = [
     { key: 'name', label: 'Participant', render: (p) => <div className="flex items-center gap-3"><Avatar name={p.name} size="sm" /><Cell title={p.name} sub={p.agency} /></div> },
     ...shown.map((pt) => ({ key: pt.key, label: pt.label, render: (p) => <Point cell={p[pt.key]} /> })),
+    {
+      key: 'paper', label: 'Paper sheet',
+      render: () => (daySheets.length ? (
+        <div className="flex flex-wrap gap-1">
+          {daySheets.map((sh) => (
+            <button key={sh.id} type="button" onClick={() => setViewing(sh)} title={`${sh.file} · ${coversText(sh)}`}
+              className="inline-flex h-7 items-center gap-1.5 rounded-full bg-brand-100/70 px-2.5 text-xs text-brand-800 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
+              <Icon name={sh.mime?.startsWith('image/') ? 'image' : 'file'} size={12} />{chipText(sh)}
+            </button>
+          ))}
+        </div>
+      ) : <span className="text-xs text-ink-400">—</span>),
+    },
   ];
 
   const exportCsv = () => {
@@ -108,15 +145,32 @@ export default function AttendanceTab({ activity, notify }) {
           <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
             <option>All statuses</option>{STATUSES.map((s) => <option key={s}>{s}</option>)}
           </Select>
-          <span className="ml-auto flex items-center gap-2 text-xs text-ink-500">
-            <i className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-emerald-400' : 'bg-ink-400'}`} />
-            {live ? 'Live sync active' : 'Check-in is closed'}{pending > 0 && ` · ${pending} pending sync`}
-          </span>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="flex items-center gap-2 text-xs text-ink-500">
+              <i className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-emerald-400' : 'bg-ink-400'}`} />
+              {live ? 'Live sync active' : 'Check-in is closed'}{pending > 0 && ` · ${pending} pending sync`}
+            </span>
+            {/* Paper attendance: a signed sheet (scan or photo) kept with the day's attendance */}
+            <Button size="sm" icon="upload" disabled={!editing} title={editing ? 'Attach a scan or photo of the signed paper attendance' : 'Press Edit activity to attach a sheet'} onClick={() => setAttaching(true)}>Attach sheet</Button>
+          </div>
         </div>
         <DataTable columns={columns} rows={rows} empty="No participants match these filters." />
       </Panel>
 
       {qr && <QrModal activity={activity} day={day} onClose={() => setQr(false)} />}
+      {attaching && (
+        <AttachSheetModal
+          days={staffDays} sessions={sessions} defaultDay={day} onClose={() => setAttaching(false)}
+          onAttach={(added) => { setSheets((l) => [...l, ...added]); notify?.(added.length === 1 ? `${added[0].file} attached` : `${added.length} sheets attached`); }}
+        />
+      )}
+      {viewing && (
+        <DocumentPreviewModal
+          doc={{ ...viewing, type: 'Attendance sheet' }} onClose={() => setViewing(null)} notify={notify}
+          details={[['Day', `Day ${viewing.day} · ${staffDays.find((d) => d.n === viewing.day)?.label.split(',')[0] ?? ''}`], ['Covers', coversText(viewing)], ['Note', viewing.note || '—']]}
+          onRemove={editing ? async () => { if (await removeSheet(viewing)) setViewing(null); } : undefined}
+        />
+      )}
     </div>
   );
 }
@@ -136,6 +190,74 @@ function QrModal({ activity, day, onClose }) {
         </div>
         <QrPreview seed={`${activity.id}-${day}-${point.key}`} />
         <p className="mt-3 text-xs text-ink-500">Participants scan this with the UniFyle app to record their {point.label.toLowerCase()}. It only works while that window is open.</p>
+      </div>
+    </Modal>
+  );
+}
+
+const fileSize = (b) => (b < 1048576 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1048576).toFixed(1)} MB`);
+const ACCEPT = '.pdf,.jpg,.jpeg,.png';
+const MAX_BYTES = 10 * 1048576;
+
+/** Attach one or more scanned or photographed attendance sheets to a day (the whole day, AM, PM or one session). */
+function AttachSheetModal({ days, sessions, defaultDay, onAttach, onClose }) {
+  const input = useRef(null);
+  const [files, setFiles] = useState([]);
+  const [day, setDay] = useState(defaultDay);
+  const [covers, setCovers] = useState('Whole day');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState('');
+  const daySessions = sessions.filter((s) => s.day === Number(day)).sort(sessionOrder);
+
+  const pick = (list) => {
+    const chosen = [...list];
+    const bad = chosen.find((f) => !/\.(pdf|jpe?g|png)$/i.test(f.name));
+    const big = chosen.find((f) => f.size > MAX_BYTES);
+    if (bad) setError(`“${bad.name}” is not a PDF or an image (JPG, PNG).`);
+    else if (big) setError(`“${big.name}” is larger than 10 MB.`);
+    else setError('');
+    setFiles(chosen.filter((f) => /\.(pdf|jpe?g|png)$/i.test(f.name) && f.size <= MAX_BYTES));
+  };
+
+  const attach = () => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    onAttach(files.map((f, i) => ({
+      id: Date.now() + i, file: f.name, size: fileSize(f.size), mime: f.type, url: URL.createObjectURL(f),
+      day: Number(day), covers, note: note.trim(), uploaded: today,
+    })));
+    onClose();
+  };
+
+  return (
+    <Modal title="Attach attendance sheet" subtitle="A scan or photo of the signed paper attendance" onClose={onClose} width={520}
+      footer={<><span /><div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={!files.length} onClick={attach}>{files.length > 1 ? `Attach ${files.length} files` : 'Attach'}</Button></div></>}>
+      <div className="space-y-4 pb-2">
+        <input ref={input} type="file" accept={ACCEPT} multiple className="sr-only" onChange={(e) => { pick(e.target.files ?? []); e.target.value = ''; }} />
+        <button type="button" onClick={() => input.current?.click()}
+          className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-ink-200 bg-white/50 p-4 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/50">
+          <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg bg-ink-100 text-ink-600"><Icon name="upload" size={17} /></span>
+          <span className="min-w-0">
+            <strong className="block truncate text-[13px] font-medium text-ink-800">{files.length ? files.map((f) => f.name).join(', ') : 'Choose files'}</strong>
+            <small className="text-xs text-ink-500">PDF, JPG or PNG, up to 10 MB each. You can choose several pages at once.</small>
+          </span>
+        </button>
+        {error && <p className="flex items-center gap-1.5 text-xs text-danger"><Icon name="alert" size={13} />{error}</p>}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Day">
+            <select className={inputCls} value={day} onChange={(e) => { setDay(Number(e.target.value)); setCovers('Whole day'); }}>
+              {days.map((d) => <option key={d.n} value={d.n}>Day {d.n} · {d.label.split(',')[0]}</option>)}
+            </select>
+          </Field>
+          <Field label="Covers">
+            <select className={inputCls} value={covers} onChange={(e) => setCovers(e.target.value)}>
+              <option>Whole day</option>
+              <option value="AM">AM check-ins</option>
+              <option value="PM">PM check-ins</option>
+              {daySessions.map((s) => <option key={s.id} value={String(s.id)}>{s.period} · {s.title} ({s.room})</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field label="Note (optional)"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Signed by the registration desk" /></Field>
       </div>
     </Modal>
   );

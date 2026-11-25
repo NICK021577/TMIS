@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { ActionIcon, Avatar, Badge, Button, Cell, DataTable, Icon, Panel, PanelTitle, ProgressBar, Select } from '../ui';
 import { useStore } from '../../hooks/useStore';
 import { useAccess, useEditing } from './editContext';
-import { ACTIVITY_ROLE_HELP } from '../../lib/activityAccess';
+import { ACTIVITY_ROLE_HELP, roleTone } from '../../lib/activityAccess';
 import AddDayModal from '../modals/AddDayModal';
 import DocumentPreviewModal, { downloadDoc } from '../modals/DocumentPreviewModal';
 import ResourceModal from '../modals/ResourceModal';
@@ -11,6 +11,7 @@ import SessionMaterialsModal from '../modals/SessionMaterialsModal';
 import SessionModal from '../modals/SessionModal';
 import { copyText, downloadFile, makePdf } from '../../lib/download';
 import { estOf } from '../../lib/budgetModel';
+import { sessionOrder } from '../../lib/sessions';
 import { computeReadiness } from '../../lib/readiness';
 import AddParticipantModal from '../modals/AddParticipantModal';
 import AssignStaffModal from '../modals/AssignStaffModal';
@@ -52,7 +53,7 @@ export function OverviewTab({ activity, goTab, notify }) {
   const partnerText = partnerCount ? `${partnerCount} partner organization${partnerCount === 1 ? '' : 's'}` : '';
   const { checks, percent } = computeReadiness({ activity, details: d, sessions, staffDays, resources, documents, items, feedbackForms });
   const upNext = sessions.find((s) => s.status === 'Ongoing') ?? sessions.find((s) => s.status === 'Upcoming');
-  const ordered = [...sessions].sort((a, b) => a.day - b.day || (a.period === b.period ? 0 : a.period === 'AM' ? -1 : 1));
+  const ordered = [...sessions].sort(sessionOrder);
   const set = (patch) => setDetails(activity.id, patch);
   const dash = (v) => v || <span className="text-ink-400">Not set</span>;
 
@@ -325,10 +326,15 @@ export function SessionsTab({ notify }) {
   const canMaterials = access.editing && access.level !== 'view';   // materials stay editable for roles that may only upload them
   const confirm = useConfirm();
   const { sessions, setSessions, staffDays } = useStore();
-  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState(null);         // { preset } to add, { initial } to edit
   const [managing, setManaging] = useState(null);
 
   const update = (next) => setSessions((l) => l.map((x) => (x.id === next.id ? next : x)));
+  const save = (next) => {
+    const isNew = !sessions.some((x) => x.id === next.id);
+    setSessions((l) => (isNew ? [...l, next] : l.map((x) => (x.id === next.id ? next : x))));
+    notify?.(isNew ? 'Session added' : 'Session updated');
+  };
   const remove = async (s) => {
     if (await confirm({ tone: 'danger', title: 'Delete this session?', message: `“${s.title}” and its materials will be removed from the program.`, confirmLabel: 'Delete session' })) {
       setSessions((l) => l.filter((x) => x.id !== s.id));
@@ -337,36 +343,76 @@ export function SessionsTab({ notify }) {
   };
 
   const columns = [
-    { key: 'day', label: 'Day', render: (s) => <span className="whitespace-nowrap">Day {s.day} · {s.date}</span> },
-    { key: 'period', label: 'Period', render: (s) => <Badge value={s.period} tone="info" variant="pill" /> },
-    { key: 'time', label: 'Time', render: (s) => <span className="whitespace-nowrap text-ink-600">{s.time}</span> },
+    { key: 'time', label: 'Time', render: (s) => <span className="whitespace-nowrap tabular-nums text-ink-600">{s.time}</span> },
     { key: 'title', label: 'Session', render: (s) => <strong className="font-medium text-ink-950">{s.title}</strong> },
     { key: 'speaker', label: 'Resource person' },
-    { key: 'room', label: 'Venue' },
+    { key: 'room', label: 'Venue', render: (s) => <span className="inline-flex items-center gap-1.5"><Icon name="location" size={13} className="text-ink-400" />{s.room}</span> },
     { key: 'files', label: 'Materials', render: (s) => <span className="text-ink-600">{s.files} {s.files === 1 ? 'file' : 'files'}</span> },
     {
       key: 'm', label: 'Actions', className: 'text-right',
       render: (s) => (
         <div className="flex justify-start gap-0.5">
           <ActionIcon icon="file" tone="brand" label="Session materials" onClick={() => setManaging(s)} />
+          <ActionIcon icon="edit" label="Edit session" disabled={!editing} onClick={() => setForm({ initial: s })} />
           <ActionIcon icon="trash" tone="danger" label="Delete session" disabled={!editing} onClick={() => remove(s)} />
         </div>
       ),
     },
   ];
-  const ordered = [...sessions].sort((a, b) => a.day - b.day || (a.period === b.period ? 0 : a.period === 'AM' ? -1 : 1));
+
+  // Days come from the activity's days; a session on a day that was removed still shows under its day number.
+  const dayNumbers = [...new Set([...staffDays.map((d) => d.n), ...sessions.map((x) => x.day)])].sort((x, y) => x - y);
+  const dayLabel = (n) => staffDays.find((d) => d.n === n)?.label ?? `Day ${n}`;
+  const ordered = [...sessions].sort(sessionOrder);
 
   return (
-    <Panel pad={false} className="overflow-hidden">
-      <div className="p-5 pb-3">
-        <PanelTitle title="Sessions" subtitle="Each session has an AM and PM period with its own QR attendance, materials and feedback">
-          <Button size="sm" icon="plus" disabled={!editing} onClick={() => setAdding(true)}>Add session</Button>
-        </PanelTitle>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-medium text-ink-950">Sessions</h2>
+          <p className="text-xs text-ink-500">A morning or afternoon can have several sessions, each with its own venue, QR attendance, materials and feedback.</p>
+        </div>
+        <Button size="sm" icon="plus" disabled={!editing} onClick={() => setForm({ preset: {} })}>Add session</Button>
       </div>
-      <DataTable columns={columns} rows={ordered} empty="No sessions yet." />
-      {adding && <SessionModal days={staffDays} onSave={(s) => { setSessions((l) => [...l, s]); notify?.('Session added'); }} onClose={() => setAdding(false)} />}
+
+      {dayNumbers.map((n) => {
+        const mine = ordered.filter((x) => x.day === n);
+        return (
+          <Panel key={n} pad={false} className="overflow-hidden">
+            <div className="flex items-center gap-3 p-5 pb-2">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-100 text-[13px] font-medium text-brand-700">{n}</span>
+              <div>
+                <h3 className="text-sm font-medium text-ink-950">Day {n}</h3>
+                <p className="text-xs text-ink-500">{dayLabel(n)} · {mine.length} {mine.length === 1 ? 'session' : 'sessions'}</p>
+              </div>
+            </div>
+            {['AM', 'PM'].map((period) => {
+              const rows = mine.filter((x) => x.period === period);
+              const venues = new Set(rows.map((x) => x.room.trim().toLowerCase())).size;
+              return (
+                <div key={period} className="border-t border-[var(--glass-divider)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-1 pt-3">
+                    <span className="flex items-center gap-2">
+                      <Badge value={period} tone="info" variant="pill" />
+                      <span className="text-xs text-ink-500">
+                        {period === 'AM' ? 'Morning' : 'Afternoon'} · {rows.length} {rows.length === 1 ? 'session' : 'sessions'}{venues > 1 ? ` in ${venues} venues` : ''}
+                      </span>
+                    </span>
+                    <Button variant="ghost" size="sm" icon="plus" disabled={!editing} onClick={() => setForm({ preset: { day: n, period } })}>Add to {period}</Button>
+                  </div>
+                  <DataTable columns={columns} rows={rows} empty={`No ${period} sessions on Day ${n}.`} />
+                </div>
+              );
+            })}
+          </Panel>
+        );
+      })}
+
+      {form && (
+        <SessionModal days={staffDays} sessions={sessions} initial={form.initial} preset={form.preset} onSave={save} onClose={() => setForm(null)} />
+      )}
       {managing && <SessionMaterialsModal session={sessions.find((x) => x.id === managing.id) ?? managing} editing={canMaterials} onChange={update} onClose={() => setManaging(null)} notify={notify} />}
-    </Panel>
+    </div>
   );
 }
 
@@ -393,12 +439,23 @@ export function StaffingTab({ notify }) {
   const addDay = (label) => setDays((l) => [...l, { n: l.length + 1, label, staff: [] }]);
 
   const columns = (n) => [
-    { key: 'name', label: 'Name', render: (s) => <div className="flex items-center gap-3"><Avatar name={s.name.replace(/^(Ms|Mr|Dr)\.\s*/, '')} size="sm" /><strong className="font-medium text-ink-950">{s.name}</strong></div> },
+    {
+      key: 'name', label: 'Name',
+      render: (s) => {
+        const initials = s.name.replace(/^(Ms|Mr|Dr|Engr)\.\s*/, '').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+        return (
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className={`inline-grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[11px] font-medium ring-2 ring-white ${roleTone(s.role).avatar}`}>{initials}</span>
+            <strong className="font-medium text-ink-950">{s.name}</strong>
+          </div>
+        );
+      },
+    },
     {
       key: 'role', label: 'Role in this activity',
       render: (s) => (editing
-        ? <select value={s.role} onChange={(e) => setRole(n, s.id, e.target.value)} aria-label={`Role of ${s.name}`} className="glass-input h-8 rounded-full px-3 text-xs text-ink-800">{STAFF_ROLES.map((r) => <option key={r}>{r}</option>)}</select>
-        : s.role),
+        ? <select value={s.role} onChange={(e) => setRole(n, s.id, e.target.value)} aria-label={`Role of ${s.name}`} className={`h-8 cursor-pointer rounded-full border-0 px-3 text-xs font-medium ring-1 focus:outline-none focus-visible:ring-2 ${roleTone(s.role).pill}`}>{STAFF_ROLES.map((r) => <option key={r}>{r}</option>)}</select>
+        : <span className={`inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium ring-1 ${roleTone(s.role).pill}`}><i className={`h-1.5 w-1.5 rounded-full ${roleTone(s.role).dot}`} />{s.role}</span>),
     },
     { key: 'duty', label: 'Responsibility', render: (s) => <span className="text-ink-600">{s.duty}</span> },
     { key: 'status', label: 'Status', render: (s) => <Badge value={s.status} /> },
@@ -410,8 +467,8 @@ export function StaffingTab({ notify }) {
       <p className="text-xs text-ink-500">Staff are assigned per day. The role you give someone decides what they can edit in this activity. Everyone keeps seeing every module; modules they cannot edit are read-only. The same person can be assigned on several days.</p>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {ACTIVITY_ROLE_HELP.map(([r, text]) => (
-          <div key={r} className="glass-inset rounded-2xl px-4 py-3">
-            <strong className="block text-[13px] font-medium text-ink-950">{r}</strong>
+          <div key={r} className={`rounded-2xl px-4 py-3 ring-1 ${roleTone(r).card}`}>
+            <strong className={`flex items-center gap-2 text-[13px] font-medium ${roleTone(r).title}`}><i className={`h-2 w-2 rounded-full ${roleTone(r).dot}`} />{r}</strong>
             <small className="text-xs leading-snug text-ink-500">{text}</small>
           </div>
         ))}

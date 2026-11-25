@@ -1,17 +1,20 @@
 import { useConfirm } from '../modals/confirmContext';
 import { useRef, useState } from 'react';
-import { ActionIcon, Avatar, Badge, Button, DataTable, Icon, MeterRow, Metric, Panel, PanelTitle, ProgressBar, Select, Switch } from '../ui';
+import { ActionIcon, Avatar, Badge, Button, DataTable, Field, Icon, Modal, Panel, PanelTitle, ProgressBar, Select, Switch, inputCls } from '../ui';
 import { useEditing } from './editContext';
 import FeedbackSummary from './FeedbackSummary';
+import FeedbackResponses from './FeedbackResponses';
+import { sessionOrder } from '../../lib/sessions';
+import { AGREE, EMOJI, EMOJI_WORDS, Q_TYPES, optionsFor, typeLabel } from '../../lib/feedbackTypes';
 import { useStore } from '../../hooks/useStore';
 import CertificateCanvas, { CERT_COLORS, CERT_STYLES, DEFAULT_TEMPLATE, certificateDocument } from '../modals/CertificateCanvas';
 import CertificatePreviewModal from '../modals/CertificatePreviewModal';
 import DocumentPreviewModal, { downloadDoc } from '../modals/DocumentPreviewModal';
 import UploadDocumentModal from '../modals/UploadDocumentModal';
 import SignaturePadModal from '../modals/SignaturePadModal';
-import { certificateHtml, downloadCsv, downloadFile } from '../../lib/download';
+import { certificateHtml, downloadFile } from '../../lib/download';
 import {
-  CERT_ROWS, FEEDBACK, FEEDBACK_COMMENTS, FEEDBACK_FORM, FEEDBACK_SUMMARY, OUTPUT_SUBMISSIONS, REENTRY,
+  CERT_ROWS, FEEDBACK_FORM, OUTPUT_SUBMISSIONS, REENTRY,
 } from '../../data/workspaceData';
 
 /* ── shared bits ──────────────────────────────────────────────────── */
@@ -32,16 +35,6 @@ function Pills({ options, value, onChange }) {
         );
       })}
     </div>
-  );
-}
-
-function Stars({ value, size = 14 }) {
-  return (
-    <span className="inline-flex gap-0.5" role="img" aria-label={`${value} out of 5`}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Icon key={n} name="star" size={size} className={n <= Math.round(value) ? 'fill-amber-400 text-amber-400' : 'text-ink-300'} />
-      ))}
-    </span>
   );
 }
 
@@ -157,31 +150,95 @@ export function OutputsTab({ notify }) {
 
 /* ── Feedback ─────────────────────────────────────────────────────── */
 function QuestionPreview({ q }) {
-  if (q.type === 'Rating') return <div className="mt-2 flex gap-1.5">{[1, 2, 3, 4, 5].map((n) => <span key={n} className="grid h-8 w-8 place-items-center rounded-full border border-ink-200 bg-white text-xs text-ink-500">{n}</span>)}<span className="ml-2 self-center text-[11px] text-ink-400">1 = Poor, 5 = Excellent</span></div>;
-  if (q.type === 'Choice') return <div className="mt-2 flex flex-wrap gap-2">{(q.options ?? []).map((o) => <span key={o} className="rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-xs text-ink-700">{o}</span>)}</div>;
+  const dot = 'grid place-items-center rounded-full border border-ink-200 bg-white text-ink-500';
+  if (q.type === 'Rating') return <div className="mt-2 flex gap-1.5">{[1, 2, 3, 4, 5].map((n) => <span key={n} className={`${dot} h-8 w-8 text-xs`}>{n}</span>)}<span className="ml-2 self-center text-[11px] text-ink-400">1 = Poor, 5 = Excellent</span></div>;
+  if (q.type === 'Stars') return <div className="mt-2 flex items-center gap-1">{[1, 2, 3, 4, 5].map((n) => <Icon key={n} name="star" size={22} className="text-amber-300" />)}<span className="ml-2 text-[11px] text-ink-400">Tap 1 to 5 stars</span></div>;
+  if (q.type === 'Emoji') return <div className="mt-2 flex gap-1.5">{EMOJI.map((e, i) => <span key={e} title={EMOJI_WORDS[i]} className={`${dot} h-9 w-9 text-lg`}>{e}</span>)}<span className="ml-2 self-center text-[11px] text-ink-400">Very unhappy to very happy</span></div>;
+  if (q.type === 'Agree scale') return <div className="mt-2 flex flex-wrap gap-1.5">{AGREE.map((a) => <span key={a} className="rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[11px] text-ink-600">{a}</span>)}</div>;
+  if (q.type === '0–10 scale') return <div className="mt-2"><div className="flex flex-wrap gap-1">{Array.from({ length: 11 }, (_, n) => <span key={n} className={`${dot} h-7 w-7 text-[11px]`}>{n}</span>)}</div><div className="mt-1 flex max-w-[340px] justify-between text-[11px] text-ink-400"><span>Not likely</span><span>Very likely</span></div></div>;
+  if (q.type === 'Thumbs') return <div className="mt-2 flex flex-wrap items-center gap-1.5"><span className={`${dot} h-9 w-9 text-base`}>👍</span><span className={`${dot} h-9 w-9 text-base`}>👎</span><span className="mx-1 h-5 w-px bg-ink-200" />{(q.options ?? []).map((t, i) => <span key={i} className="rounded-md border border-ink-200 bg-white px-2 py-1 text-[11px] text-ink-600">{t || 'Tag'}</span>)}</div>;
+  if (q.type === 'Choice') return <div className="mt-2 flex flex-wrap gap-2">{(q.options ?? []).map((o, i) => <span key={i} className="rounded-full border border-ink-200 bg-white px-3.5 py-1.5 text-xs text-ink-700">{o || 'Option'}</span>)}</div>;
   return <div className="mt-2 h-14 rounded-xl border border-dashed border-ink-300 bg-white/60 px-3 py-2 text-xs text-ink-400">Participant types their answer here</div>;
 }
 
-/** FeedbackForm — participants answer after each day, so there is one form per day of the activity. */
+/** The options of a Choice question, edited in place. */
+function ChoiceOptions({ options, onChange, word = 'Option' }) {
+  const list = options ?? [];
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {list.map((o, i) => (
+        <span key={i} className="inline-flex h-8 items-center gap-1 rounded-full border border-ink-200 bg-white pl-3 pr-1">
+          <input value={o} onChange={(e) => onChange(list.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`${word} ${i + 1}`} aria-label={`${word} ${i + 1}`}
+            className="w-24 bg-transparent text-xs text-ink-800 outline-none" />
+          <button type="button" onClick={() => onChange(list.filter((_, j) => j !== i))} aria-label={`Remove ${word.toLowerCase()} ${i + 1}`} className="grid h-6 w-6 place-items-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-800"><Icon name="close" size={11} /></button>
+        </span>
+      ))}
+      <button type="button" onClick={() => onChange([...list, ''])} className="inline-flex h-8 items-center gap-1 rounded-full border border-dashed border-ink-300 px-3 text-xs text-ink-600 hover:border-brand-400 hover:text-brand-700"><Icon name="plus" size={12} />{word}</button>
+    </div>
+  );
+}
+
+/** Pick a day for a new form and how it starts: blank (default), copied from another day, or the standard questions. */
+function AddFormModal({ freeDays, forms, dayLabel, onAdd, onClose }) {
+  const [day, setDay] = useState(freeDays[0]?.n);
+  const [start, setStart] = useState('blank');
+  const choices = [
+    { id: 'blank', title: 'Blank form', sub: 'Start empty and add your own questions' },
+    ...forms.map((f) => ({ id: `copy-${f.id}`, title: `Copy Day ${f.day}’s form`, sub: `${f.questions.length} question${f.questions.length === 1 ? '' : 's'} you can change after` })),
+    { id: 'standard', title: 'Standard questions', sub: `${FEEDBACK_FORM.length} common questions: overall stars, content and resource person, venue, feeling, pace, recommend, comments` },
+  ];
+  const add = () => {
+    const src = start === 'standard' ? FEEDBACK_FORM : start.startsWith('copy-') ? forms.find((f) => `copy-${f.id}` === start)?.questions ?? [] : [];
+    const stamp = Date.now();
+    onAdd(Number(day), src.map((q, i) => ({ ...q, options: q.options ? [...q.options] : undefined, id: stamp + i })));
+    onClose();
+  };
+  return (
+    <Modal title="Add a feedback form" subtitle="One form per day. It is sent after each session that day." onClose={onClose} width={520}
+      footer={<><span /><div className="flex gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={add}>Add form</Button></div></>}>
+      <div className="space-y-4 pb-2">
+        <Field label="Day">
+          <select className={inputCls} value={day} onChange={(e) => setDay(Number(e.target.value))}>
+            {freeDays.map((d) => <option key={d.n} value={d.n}>{dayLabel(d)}</option>)}
+          </select>
+        </Field>
+        <fieldset>
+          <legend className="mb-2 text-xs font-medium text-ink-700">Start with</legend>
+          <div className="space-y-2">
+            {choices.map((c) => (
+              <label key={c.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl px-4 py-3 ring-1 transition-colors ${start === c.id ? 'bg-brand-50/80 ring-brand-300' : 'bg-white/50 ring-ink-200/70 hover:bg-white'}`}>
+                <input type="radio" name="start" className="mt-0.5 accent-brand-600" checked={start === c.id} onChange={() => setStart(c.id)} />
+                <span><strong className="block text-[13px] font-medium text-ink-950">{c.title}</strong><small className="text-xs text-ink-500">{c.sub}</small></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * FeedbackForm — one form per day of the activity. The day's form is sent after each session of that day, so
+ * participants rate every session on its own. A new form starts blank unless you choose to copy one.
+ */
 function FeedbackForm({ notify }) {
   const editing = useEditing();
   const confirm = useConfirm();
-  const { staffDays, feedbackForms: forms, setFeedbackForms: setForms } = useStore();
+  const { staffDays, sessions, feedbackForms: forms, setFeedbackForms: setForms } = useStore();
+  const [adding, setAdding] = useState(false);
+  const [fresh, setFresh] = useState(null);       // id of the question just added, to focus it
 
   const ordered = [...forms].sort((a, b) => a.day - b.day);
   const usedDays = new Set(forms.map((f) => f.day));
-  const freeDay = staffDays.find((d) => !usedDays.has(d.n));
+  const freeDays = staffDays.filter((d) => !usedDays.has(d.n));
   const dayLabel = (d) => `Day ${d.n} · ${d.label.split(',')[0]}`;
 
-  const addForm = () => {
-    if (!freeDay) return;
-    // a new day starts from the questions of the first form, so nothing is retyped
-    const base = ordered[0]?.questions ?? FEEDBACK_FORM;
-    setForms((l) => [...l, { id: Date.now(), day: freeDay.n, questions: base.map((q) => ({ ...q, id: Date.now() + q.id })) }]);
-    notify?.(`Feedback form added for Day ${freeDay.n}`);
-  };
   const patchForm = (id, patch) => setForms((l) => l.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   const setQuestions = (id, fn) => setForms((l) => l.map((f) => (f.id === id ? { ...f, questions: fn(f.questions) } : f)));
+  const patchQ = (fid, qid, patch) => setQuestions(fid, (l) => l.map((x) => (x.id === qid ? { ...x, ...patch } : x)));
+  const addQuestion = (fid) => { const id = Date.now(); setQuestions(fid, (l) => [...l, { id, text: '', type: 'Rating', required: false }]); setFresh(id); };
+  const move = (fid, i, by) => setQuestions(fid, (l) => { const n = [...l]; const j = i + by; if (j < 0 || j >= n.length) return l; [n[i], n[j]] = [n[j], n[i]]; return n; });
   const removeForm = async (f) => {
     if (await confirm({ tone: 'danger', title: `Remove the Day ${f.day} form?`, message: 'Participants will no longer be asked for feedback for that day. Answers already collected are kept.', confirmLabel: 'Remove form' })) {
       setForms((l) => l.filter((x) => x.id !== f.id));
@@ -190,54 +247,86 @@ function FeedbackForm({ notify }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-ink-500">Feedback is collected after each day. Each form below is sent to participants at the end of its day.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-ink-500">One form per day. It is sent after each session that day, so participants rate every session on its own.</p>
+        {!editing && <span className="flex items-center gap-1.5 text-xs text-ink-500"><Icon name="lock" size={13} />Press Edit activity to change the forms.</span>}
+      </div>
 
       {ordered.map((f) => {
         const options = staffDays.filter((d) => d.n === f.day || !usedDays.has(d.n));
+        const daySessions = sessions.filter((s) => s.day === f.day).sort(sessionOrder);
         return (
           <Panel key={f.id} pad={false} className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-3">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-100 text-[13px] font-medium text-brand-700">{f.day}</span>
-                <div>
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-brand-100 text-[13px] font-medium text-brand-700">{f.day}</span>
+                <div className="min-w-0">
                   <label htmlFor={`day-${f.id}`} className="sr-only">Day for this form</label>
                   <select id={`day-${f.id}`} value={f.day} disabled={!editing} onChange={(e) => patchForm(f.id, { day: Number(e.target.value) })}
                     className="glass-input h-9 rounded-full px-3.5 text-[13px] font-medium text-ink-950 disabled:cursor-not-allowed disabled:opacity-70">
                     {options.map((d) => <option key={d.n} value={d.n}>{dayLabel(d)}</option>)}
                   </select>
-                  <p className="mt-1 pl-1 text-xs text-ink-500">{f.questions.length} question{f.questions.length === 1 ? '' : 's'}</p>
+                  <p className="mt-1 truncate pl-1 text-xs text-ink-500">
+                    {f.questions.length} question{f.questions.length === 1 ? '' : 's'} · {daySessions.length ? `Sent after ${daySessions.length} session${daySessions.length === 1 ? '' : 's'}: ${daySessions.map((s) => s.title).join(', ')}` : 'No sessions on this day yet'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button size="sm" icon="plus" disabled={!editing} onClick={() => setQuestions(f.id, (q) => [...q, { id: Date.now(), text: 'New question', type: 'Rating', required: false }])}>Add question</Button>
+                <Button size="sm" icon="plus" disabled={!editing} onClick={() => addQuestion(f.id)}>Add question</Button>
                 <ActionIcon icon="trash" tone="danger" label="Remove this form" disabled={!editing} onClick={() => removeForm(f)} />
               </div>
             </div>
             <ol className="space-y-3 px-5 pb-5">
               {f.questions.map((q, i) => (
                 <li key={q.id} className="glass-inset rounded-2xl p-4">
-                  <div className="flex items-start gap-3">
+                  <div className="flex flex-wrap items-start gap-3">
                     <span className="mt-1 grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-brand-100 text-[11px] font-medium text-brand-700">{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <input
-                        value={q.text} disabled={!editing} aria-label={`Day ${f.day} question ${i + 1}`}
-                        onChange={(e) => setQuestions(f.id, (l) => l.map((x) => (x.id === q.id ? { ...x, text: e.target.value } : x)))}
-                        className="w-full rounded-lg bg-transparent text-[13px] font-medium text-ink-950 outline-none enabled:border enabled:border-ink-200 enabled:bg-white enabled:px-2.5 enabled:py-1.5 disabled:cursor-default"
+                        value={q.text} disabled={!editing} aria-label={`Day ${f.day} question ${i + 1}`} placeholder="Type the question"
+                        autoFocus={fresh === q.id}
+                        onChange={(e) => patchQ(f.id, q.id, { text: e.target.value })}
+                        className="w-full rounded-lg bg-transparent text-[13px] font-medium text-ink-950 outline-none placeholder:font-normal placeholder:text-ink-400 enabled:border enabled:border-ink-200 enabled:bg-white enabled:px-2.5 enabled:py-1.5 disabled:cursor-default"
                       />
-                      <QuestionPreview q={q} />
+                      {editing && q.type === 'Choice' ? <ChoiceOptions options={q.options} onChange={(o) => patchQ(f.id, q.id, { options: o })} />
+                        : editing && q.type === 'Thumbs' ? <><QuestionPreview q={{ ...q, options: [] }} /><p className="mb-1 mt-2.5 text-[11px] text-ink-500">Quick tags participants can tap to say why</p><ChoiceOptions word="Tag" options={q.options} onChange={(o) => patchQ(f.id, q.id, { options: o })} /></>
+                        : <QuestionPreview q={q} />}
                     </div>
                     <div className="flex flex-shrink-0 items-center gap-2">
-                      <Badge value={q.type} tone="muted" variant="pill" />
+                      {editing ? (
+                        <select aria-label={`Question ${i + 1} type`} value={q.type}
+                          onChange={(e) => patchQ(f.id, q.id, { type: e.target.value, options: optionsFor(e.target.value, q.type === e.target.value ? q.options : undefined) })}
+                          className="glass-input h-8 rounded-full px-3 text-xs text-ink-800">
+                          {Q_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                        </select>
+                      ) : <Badge value={typeLabel(q.type)} tone="muted" variant="pill" />}
                       <label className="flex items-center gap-1.5 text-[11px] text-ink-500">
-                        <Switch checked={q.required} onChange={(v) => editing && setQuestions(f.id, (l) => l.map((x) => (x.id === q.id ? { ...x, required: v } : x)))} label={`Question ${i + 1} required`} />
+                        <Switch checked={q.required} onChange={(v) => editing && patchQ(f.id, q.id, { required: v })} label={`Question ${i + 1} required`} />
                         <span className="hidden sm:inline">Required</span>
                       </label>
+                      {editing && (
+                        <>
+                          <ActionIcon icon="chevron" label="Move up" className="rotate-180" disabled={i === 0} onClick={() => move(f.id, i, -1)} />
+                          <ActionIcon icon="chevron" label="Move down" disabled={i === f.questions.length - 1} onClick={() => move(f.id, i, 1)} />
+                        </>
+                      )}
                       <ActionIcon icon="trash" tone="danger" label="Remove question" disabled={!editing} onClick={async () => { if (await confirm({ tone: 'danger', title: 'Remove this question?', message: 'It will no longer appear on this day’s form. Answers already collected are kept.', confirmLabel: 'Remove question' })) setQuestions(f.id, (l) => l.filter((x) => x.id !== q.id)); }} />
                     </div>
                   </div>
                 </li>
               ))}
-              {!f.questions.length && <li className="py-4 text-center text-[13px] text-ink-500">No questions yet.</li>}
+              {!f.questions.length && (
+                <li className="grid place-items-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 py-8 text-center">
+                  <strong className="text-[13px] font-medium text-ink-800">No questions yet</strong>
+                  <span className="text-xs text-ink-500">Write your own, or start from the standard questions and change them.</span>
+                  {editing && (
+                    <div className="mt-1 flex gap-2">
+                      <Button size="sm" icon="plus" onClick={() => addQuestion(f.id)}>Add question</Button>
+                      <Button size="sm" variant="secondary" onClick={() => { const stamp = Date.now(); setQuestions(f.id, () => FEEDBACK_FORM.map((q, i) => ({ ...q, options: q.options ? [...q.options] : undefined, id: stamp + i }))); }}>Use standard questions</Button>
+                    </div>
+                  )}
+                </li>
+              )}
             </ol>
           </Panel>
         );
@@ -245,89 +334,18 @@ function FeedbackForm({ notify }) {
 
       {/* Outside the forms: add one for another day */}
       <button
-        type="button" disabled={!editing || !freeDay} onClick={addForm}
+        type="button" disabled={!editing || !freeDays.length} onClick={() => setAdding(true)}
+        title={!editing ? 'Press Edit activity to add a form' : undefined}
         className="flex w-full items-center justify-center gap-2 rounded-[18px] border-2 border-dashed border-ink-300 bg-white/30 py-5 text-[13px] font-medium text-ink-600 transition-colors enabled:hover:border-brand-400 enabled:hover:bg-brand-50/50 enabled:hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="grid h-7 w-7 place-items-center rounded-full bg-white shadow-sm"><Icon name="plus" size={15} /></span>
-        {freeDay ? `Add a feedback form for ${dayLabel(freeDay)}` : `Every day already has a form (${staffDays.length} of ${staffDays.length})`}
+        {freeDays.length ? `Add a feedback form (${freeDays.length} day${freeDays.length === 1 ? '' : 's'} without one)` : `Every day already has a form (${staffDays.length} of ${staffDays.length})`}
       </button>
-    </div>
-  );
-}
 
-function FeedbackResponses({ notify }) {
-  const [rating, setRating] = useState('All');
-  const S = FEEDBACK_SUMMARY;
-  const maxN = Math.max(...S.distribution.map((d) => d.n));
-  const comments = FEEDBACK_COMMENTS.filter((c) => rating === 'All' || (rating === '3' ? c.rating <= 3 : c.rating === Number(rating)));
-
-  const sessionCols = [
-    { key: 'session', label: 'Session', render: (f) => <strong className="font-medium text-ink-950">{f.session}</strong> },
-    { key: 'rating', label: 'Average rating', render: (f) => <span className="flex items-center gap-2"><Stars value={f.rating} size={13} /><span className="tabular-nums">{f.rating}</span></span> },
-    { key: 'responses', label: 'Responses' },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div className="glass-panel rounded-[18px] p-4">
-          <span className="text-xs text-ink-500">Overall rating</span>
-          <div className="mt-1.5 flex items-end gap-2"><strong className="text-[24px] font-medium leading-none tracking-[-0.5px] text-ink-950">{S.overall}</strong><span className="pb-0.5 text-xs text-ink-400">/ 5</span></div>
-          <div className="mt-2"><Stars value={S.overall} /></div>
-        </div>
-        <Metric label="Response rate" value={`${Math.round((S.responses / S.invited) * 100)}%`} note={`${S.responses} of ${S.invited} participants`} tone="brand" />
-        <Metric label="Would recommend" value={`${S.recommend}%`} note="Answered Yes" />
-        <Metric label="Comments" value={FEEDBACK_COMMENTS.length} note="Written feedback" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
-        <Panel>
-          <PanelTitle title="Average by criteria" subtitle="Out of 5, from rating questions" />
-          <ul className="space-y-4">
-            {S.criteria.map((c) => <MeterRow key={c.label} label={c.label} value={(c.value / 5) * 100} display={c.value.toFixed(1)} tone={c.value >= 4.5 ? 'ok' : 'brand'} labelWidth={170} />)}
-          </ul>
-        </Panel>
-        <Panel>
-          <PanelTitle title="Rating distribution" subtitle={`${S.responses} responses`} />
-          <ul className="space-y-4">
-            {S.distribution.map((d) => (
-              <MeterRow key={d.stars} label={`${d.stars} ${d.stars === 1 ? 'star' : 'stars'}`} value={maxN ? (d.n / maxN) * 100 : 0} display={d.n} tone="amber" labelWidth={60} />
-            ))}
-          </ul>
-        </Panel>
-      </div>
-
-      <Panel pad={false} className="overflow-hidden">
-        <div className="p-5 pb-3"><PanelTitle title="Ratings by session" subtitle="Collected per session from the mobile app" /></div>
-        <DataTable columns={sessionCols} rows={FEEDBACK} />
-      </Panel>
-
-      <Panel>
-        <PanelTitle title="What participants said" subtitle="Anonymous responses hide the participant’s name">
-          <Select value={rating} onChange={(e) => setRating(e.target.value)} aria-label="Filter by rating">
-            <option value="All">All ratings</option><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars or below</option>
-          </Select>
-          <Button variant="secondary" size="sm" icon="download" onClick={() => { downloadCsv('feedback.csv', [['Participant', 'Session', 'Rating', 'Date', 'Comment'], ...FEEDBACK_COMMENTS.map((c) => [c.name, c.session, c.rating, c.date, c.comment])]); notify?.('Feedback exported as CSV'); }}>Export</Button>
-        </PanelTitle>
-        {comments.length ? (
-          <ul className="divide-y divide-[var(--glass-divider)]">
-            {comments.map((c) => (
-              <li key={c.id} className="flex gap-3.5 py-4 first:pt-0 last:pb-0">
-                <Avatar name={c.name === 'Anonymous' ? '?' : c.name} size="sm" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <strong className="text-[13px] font-medium text-ink-950">{c.name}</strong>
-                    <Stars value={c.rating} size={12} />
-                    <span className="text-xs text-ink-400">{c.date}</span>
-                  </div>
-                  <p className="mt-1 text-[13px] leading-relaxed text-ink-700">{c.comment}</p>
-                  <small className="mt-1 block text-[11px] text-ink-500">{c.session}</small>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="py-6 text-center text-[13px] text-ink-500">No comments with this rating.</p>}
-      </Panel>
+      {adding && (
+        <AddFormModal freeDays={freeDays} forms={ordered} dayLabel={dayLabel} onClose={() => setAdding(false)}
+          onAdd={(day, questions) => { setForms((l) => [...l, { id: Date.now(), day, questions }]); notify?.(`Feedback form added for Day ${day}`); }} />
+      )}
     </div>
   );
 }

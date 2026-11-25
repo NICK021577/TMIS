@@ -24,7 +24,9 @@ export const DAYS = [
 export const SESSIONS = [
   { id: 1, day: 1, period: 'AM', date: 'Jun 17', time: '8:30–10:30 AM', title: 'Introduction to Rubber Production',  speaker: 'Dr. Leonilo B. Castor', room: 'Training Hall A',   files: 2, status: 'Completed' },
   { id: 2, day: 1, period: 'PM', date: 'Jun 17', time: '1:00–4:00 PM',  title: 'Latex Handling and Quality Control', speaker: 'Ms. Joy Fabian',        room: 'Training Hall A',   files: 2, status: 'Completed' },
-  { id: 3, day: 2, period: 'AM', date: 'Jun 18', time: '8:30–11:30 AM', title: 'Rubber Tapping Techniques',          speaker: 'Engr. Ana Lucero',      room: 'Training Hall B',   files: 3, status: 'Ongoing' },
+  { id: 3, day: 2, period: 'AM', date: 'Jun 18', time: '8:30–10:00 AM', title: 'Rubber Tapping Techniques',          speaker: 'Engr. Ana Lucero',      room: 'Training Hall B',   files: 3, status: 'Ongoing' },
+  // Same morning, same topic, another venue: the hands-on part moves to the nursery.
+  { id: 7, day: 2, period: 'AM', date: 'Jun 18', time: '10:15–11:30 AM', title: 'Rubber Tapping Techniques: Hands-on', speaker: 'Mr. Ramil Ocampo',      room: 'Nursery Area',      files: 0, status: 'Upcoming' },
   { id: 4, day: 2, period: 'PM', date: 'Jun 18', time: '1:00–4:30 PM',  title: 'Demo Farm: Tapping Practicum',       speaker: 'Engr. Ana Lucero',      room: 'Demo Farm Block C', files: 0, status: 'Upcoming' },
   { id: 5, day: 3, period: 'AM', date: 'Jun 19', time: '8:30–11:30 AM', title: 'Plantation Management',              speaker: 'Mr. Dennis Ramos',      room: 'Training Hall B',   files: 1, status: 'Upcoming' },
   { id: 6, day: 3, period: 'PM', date: 'Jun 19', time: '1:00–3:30 PM',  title: 'Reentry Planning and Closing',       speaker: 'Ms. Joy Fabian',        room: 'Training Hall A',   files: 1, status: 'Upcoming' },
@@ -165,13 +167,16 @@ export const OUTPUT_SUBMISSIONS = [
 
 /* ── Feedback ───────────────────────────────────────────────────── */
 export const FEEDBACK_FORM = [
-  { id: 1, text: 'Overall, how satisfied are you with this activity?',             type: 'Rating',    required: true },
-  { id: 2, text: 'The content was relevant to my work.',                           type: 'Rating',    required: true },
-  { id: 3, text: 'The resource persons explained clearly and answered questions.', type: 'Rating',    required: true },
-  { id: 4, text: 'The venue, meals and logistics were well organized.',            type: 'Rating',    required: true },
-  { id: 5, text: 'Would you recommend this activity to others?',                   type: 'Choice',    required: true, options: ['Yes', 'Maybe', 'No'] },
-  { id: 6, text: 'What was the most useful part?',                                 type: 'Open text', required: false },
-  { id: 7, text: 'What should we improve next time?',                              type: 'Open text', required: false },
+  // Question types are described in lib/feedbackTypes.js. Ids are kept stable so saved answers still match.
+  { id: 1, text: 'Overall, how would you rate this session?',                       type: 'Stars',       required: true },
+  { id: 2, text: 'The content was relevant to my work.',                           type: 'Agree scale', required: true },
+  { id: 3, text: 'The resource persons explained clearly and answered questions.', type: 'Agree scale', required: true },
+  { id: 4, text: 'The venue, meals and logistics were well organized.',            type: 'Rating',      required: true },
+  { id: 8, text: 'How do you feel after this session?',                            type: 'Emoji',       required: false },
+  { id: 9, text: 'How was the pace and delivery?',                                 type: 'Thumbs',      required: false, options: ['Clear', 'Engaging', 'Practical', 'Too fast', 'Too long'] },
+  { id: 5, text: 'How likely are you to recommend this activity to others?',      type: '0–10 scale',  required: true },
+  { id: 6, text: 'What was the most useful part?',                                 type: 'Open text',   required: false },
+  { id: 7, text: 'What should we improve next time?',                              type: 'Open text',   required: false },
 ];
 export const FEEDBACK_SUMMARY = {
   responses: 31, invited: 36, overall: 4.7, recommend: 94,

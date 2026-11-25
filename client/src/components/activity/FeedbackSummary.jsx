@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { sessionOrder } from '../../lib/sessions';
 import { Badge, Icon, MeterRow, Metric, Panel, PanelTitle } from '../ui';
 import { useStore } from '../../hooks/useStore';
 import { useAuth } from '../../context/AuthContext';
@@ -42,7 +43,7 @@ export default function FeedbackSummary() {
   const { user } = useAuth();
   const access = useAccess();
 
-  const ordered = useMemo(() => [...sessions].sort((a, b) => a.day - b.day || (a.period === b.period ? 0 : a.period === 'AM' ? -1 : 1)), [sessions]);
+  const ordered = useMemo(() => [...sessions].sort(sessionOrder), [sessions]);
   const rows = ordered.map((s) => ({ s, fb: SESSION_FEEDBACK[s.id] ?? null }));
 
   // The signed-in person's name as it appears on sessions, found through their staff entry
@@ -86,7 +87,7 @@ export default function FeedbackSummary() {
       {limited && (
         <div className="flex items-center gap-2.5 rounded-2xl bg-brand-100/70 px-4 py-2.5 text-[13px] text-brand-900">
           <Icon name="users" size={15} />
-          <span>Showing feedback for <strong className="font-medium">your {mine.length} session{mine.length === 1 ? '' : 's'}</strong>. Participant names are hidden.</span>
+          <span>Showing feedback for <strong className="font-medium">your {mine.length} session{mine.length === 1 ? '' : 's'}</strong>. Feedback is anonymous.</span>
         </div>
       )}
 
@@ -216,7 +217,7 @@ export default function FeedbackSummary() {
                         {comments.map((c) => (
                           <li key={c.id} className="py-3 first:pt-0 last:pb-0">
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                              <strong className="text-[13px] font-medium text-ink-950">{limited || c.name === 'Anonymous' ? 'Participant' : c.name}</strong>
+                              <strong className="text-[13px] font-medium text-ink-950">Participant</strong>
                               <Stars value={c.rating} size={12} />
                               <span className="text-xs text-ink-400">{c.date}</span>
                             </div>

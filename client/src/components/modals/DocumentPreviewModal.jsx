@@ -14,7 +14,8 @@ export function downloadDoc(doc) {
   }
 }
 
-export default function DocumentPreviewModal({ doc, onClose, notify }) {
+/** `details` adds rows under the preview; `onRemove` (optional) shows a Remove button for attachments the user may delete. */
+export default function DocumentPreviewModal({ doc, onClose, notify, details = [], onRemove }) {
   const isImage = doc.mime?.startsWith('image/');
   const isPdf = doc.mime === 'application/pdf';
 
@@ -26,8 +27,11 @@ export default function DocumentPreviewModal({ doc, onClose, notify }) {
       width={640}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Close</Button>
-          <Button icon="download" onClick={() => { downloadDoc(doc); notify?.(`Downloading ${doc.file}`); }}>Download</Button>
+          {onRemove ? <Button variant="ghost" icon="trash" className="text-danger hover:text-danger" onClick={onRemove}>Remove</Button> : <span />}
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>Close</Button>
+            <Button icon="download" onClick={() => { downloadDoc(doc); notify?.(`Downloading ${doc.file}`); }}>Download</Button>
+          </div>
         </>
       }
     >
@@ -52,6 +56,7 @@ export default function DocumentPreviewModal({ doc, onClose, notify }) {
           ['Type', doc.type ?? '—'],
           ['Size', doc.size ?? '—'],
           ['Uploaded', doc.uploaded ?? '—'],
+          ...details,
         ]} />
         {!doc.url && <p className="text-xs text-ink-500">This is a stand-in preview. Real documents appear here once files are uploaded.</p>}
       </div>

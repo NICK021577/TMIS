@@ -46,6 +46,8 @@ export function StoreProvider({ children, notify }) {
   const [staffDays, setStaffDays] = useState(STAFF_DAYS);
   // After-activity reports by activity id: { versions: [...], current }
   const [reports, setReports] = useState({});
+  // Paper attendance sheets attached to an activity: { activityId: [{ id, file, size, mime, url, day, covers, note, uploaded }] }
+  const [attendanceSheets, setAttendanceSheets] = useState({ 1: [{ id: 1, file: 'Day1_AM_signed_attendance_sheet.pdf', size: '640 KB', mime: 'application/pdf', day: 1, covers: 'AM', note: 'Signed sheet from the registration desk', uploaded: 'Jun 17, 2025' }] });
   // One feedback form per day
   const [feedbackForms, setFeedbackForms] = useState([{ id: 1, day: 1, questions: FEEDBACK_FORM }, { id: 2, day: 2, questions: FEEDBACK_FORM.map((q) => ({ ...q })) }]);
 
@@ -121,10 +123,10 @@ export function StoreProvider({ children, notify }) {
 
   const value = useMemo(() => ({
     activities, items, plans, published, annual, notify, uid,
-    people, invitePerson, invites, setInvites, notifications, setNotifications, sessions, setSessions, documents, setDocuments, resources, setResources, staffDays, setStaffDays, feedbackForms, setFeedbackForms, reports, setReports, details, getDetails, setDetails, restoreDetails, updateActivity, profile, setProfile, brand, setBrand, logo, setLogo, cover, setCover, categories, setCategories,
+    people, invitePerson, invites, setInvites, notifications, setNotifications, sessions, setSessions, documents, setDocuments, resources, setResources, staffDays, setStaffDays, feedbackForms, setFeedbackForms, reports, setReports, attendanceSheets, setAttendanceSheets, details, getDetails, setDetails, restoreDetails, updateActivity, profile, setProfile, brand, setBrand, logo, setLogo, cover, setCover, categories, setCategories,
     partners, setPartners, addPartner, fundingSources, setFundingSources, renameFunding, fundingNames, allFundingNames, partnersOf, setPartnersOf,
     addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, setAnnual, createActivity,
-  }), [activities, items, plans, published, annual, notify, uid, people, invitePerson, invites, notifications, sessions, documents, resources, staffDays, feedbackForms, reports, details, getDetails, setDetails, restoreDetails, updateActivity, profile, brand, logo, cover, categories, partners, addPartner, fundingSources, renameFunding, fundingNames, allFundingNames, partnersOf, setPartnersOf, addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, createActivity]);
+  }), [activities, items, plans, published, annual, notify, uid, people, invitePerson, invites, notifications, sessions, documents, resources, staffDays, feedbackForms, reports, attendanceSheets, details, getDetails, setDetails, restoreDetails, updateActivity, profile, brand, logo, cover, categories, partners, addPartner, fundingSources, renameFunding, fundingNames, allFundingNames, partnersOf, setPartnersOf, addItem, removeItem, recordActual, addPlan, removePlan, setEventPublished, createActivity]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

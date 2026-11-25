@@ -24,6 +24,18 @@ export function formatRange(start, end) {
 }
 
 export const rangesOverlap = (a, b) => a.start <= b.end && b.start <= a.end;
+
+/** True when the activity's dates touch the From–To period. An empty From or To leaves that side open. */
+export function activityInRange(activity, from, to) {
+  const { start, end } = parseRange(activity.date);
+  return (!from || end >= from) && (!to || start <= to);
+}
+/** The label of an activity in a list: its title, plus its dates when another activity has the same title. */
+export function activityLabel(activity, all) {
+  const repeated = all.filter((a) => a.title.trim().toLowerCase() === activity.title.trim().toLowerCase()).length > 1;
+  return repeated ? `${activity.title} · ${activity.date}` : activity.title;
+}
+
 export const estOf = (i) => i.qty * i.unit;
 
 /** Calendar events = real activities + planned entries */

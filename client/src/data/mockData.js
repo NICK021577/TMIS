@@ -36,6 +36,8 @@ export const ACTIVITIES = [
   { id: 4, title: 'Results-Based Monitoring Workshop',         type: 'Workshop',           date: 'July 8–9, 2025',   dateShort: 'JUL 08', venue: 'Quezon City',                              status: 'Upcoming',  participants: 28, capacity: 35, tenant: 'DA-BAR' },
   { id: 5, title: 'Agricultural Innovation Systems Forum',     type: 'Forum',              date: 'August 14, 2025',  dateShort: 'AUG 14', venue: 'Los Baños, Laguna',                        status: 'Draft',     participants: 12, capacity: 80, tenant: 'DA-BAR' },
   { id: 6, title: 'Rubber Clone Selection Field Day',          type: 'Extension Activity', date: 'July 22, 2025',   dateShort: 'JUL 22', venue: 'PRRI Experiment Station, Zamboanga Sibugay', status: 'Upcoming',  participants: 18, capacity: 30, tenant: 'PRRI' },
+  // Same title as activity 1: agencies often run a training again under the same name, so filters show the dates too.
+  { id: 7, title: 'Rubber Production and Tapping Technology',  type: 'Skills Training',    date: 'March 11–13, 2025', dateShort: 'MAR 11', venue: 'Kabasalan, Zamboanga Sibugay', status: 'Completed', participants: 38, capacity: 40, tenant: 'PRRI' },
 ];
 
 export const ACTIVITY_SUMMARY = { all: 26, upcoming: 7, ongoing: 5, completed: 14 };

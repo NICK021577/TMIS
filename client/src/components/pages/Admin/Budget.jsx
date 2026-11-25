@@ -5,7 +5,8 @@ import { BarChart, Badge, Button, DataTable, Donut, Field, Icon, Legend, Metric,
 import { useAuth } from '../../../context/AuthContext';
 import { useStore } from '../../../hooks/useStore';
 import { ACTIVITY_TYPES, BUDGET_CATEGORIES, peso } from '../../../data/mockData';
-import { MONTH_NAMES, estOf, parseRange } from '../../../lib/budgetModel';
+import { MONTH_NAMES, activityInRange, estOf, parseRange } from '../../../lib/budgetModel';
+import { ActivityPicker, PeriodFilter } from '../../shared/Filters';
 
 const TODAY = '2025-06-18';
 
@@ -62,7 +63,8 @@ export default function Budget() {
   const navigate = useNavigate();
   const { role } = useAuth();
   const { activities, items, plans, annual, allFundingNames } = useStore();
-  const [month, setMonth] = useState('all');
+  const [period, setPeriod] = useState({ from: '', to: '' });
+  const [pick, setPick] = useState('all');
   const [type, setType] = useState('all');
   const [funding, setFunding] = useState('all');
   const [setting, setSetting] = useState(false);
@@ -80,7 +82,8 @@ export default function Budget() {
     };
   }), [activities, items]);
 
-  const f = rows.filter((r) => (month === 'all' || r.month === Number(month)) && (type === 'all' || r.a.type === type) && (funding === 'all' || r.funding === funding));
+  const f = rows.filter((r) => activityInRange(r.a, period.from, period.to) && (pick === 'all' || String(r.a.id) === pick) && (type === 'all' || r.a.type === type) && (funding === 'all' || r.funding === funding));
+  const filtering = !!(period.from || period.to || pick !== 'all' || type !== 'all' || funding !== 'all');
 
   // Allocated Budget, Expenses, Difference (recorded items only) and Remaining (allocation not yet spent)
   const allocated = f.reduce((s, r) => s + r.est, 0);
@@ -142,10 +145,13 @@ export default function Budget() {
         <Button onClick={() => setSetting(true)}>Set annual budget</Button>
       </PageHeader>
 
-      <Panel className="mb-5 flex flex-wrap gap-3 !px-5 !py-3">
-        <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month"><option value="all">Whole year</option>{MONTH_NAMES.map((m, i) => <option key={m} value={i}>{m}</option>)}</Select>
+      <Panel className="mb-5 flex flex-wrap items-center gap-3 !px-5 !py-3">
+        <PeriodFilter from={period.from} to={period.to} onChange={setPeriod} />
+        <ActivityPicker activities={activities} value={pick} onChange={setPick} />
         <Select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type"><option value="all">All activity types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}</Select>
         <Select value={funding} onChange={(e) => setFunding(e.target.value)} aria-label="Funding"><option value="all">All funding sources</option>{allFundingNames.map((t) => <option key={t}>{t}</option>)}</Select>
+        <span className="text-xs text-ink-500 sm:ml-auto">{f.length} {f.length === 1 ? 'activity' : 'activities'}</span>
+        {filtering && <Button variant="ghost" size="sm" onClick={() => { setPeriod({ from: '', to: '' }); setPick('all'); setType('all'); setFunding('all'); }}>Reset</Button>}
       </Panel>
 
       {/* KPI cards */}
